@@ -1,103 +1,204 @@
-import Image from "next/image";
+// import Button from "@/component/Button";
+"use client"
+
+// import Navbar from "@/component/navbar"; 
+// import Footer from "@/component/footer";                                                                  
+import React, { useEffect, useState } from "react";
+
 
 export default function Home() {
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <>
+  
+    <main className="text-gray-800">
+      {/* Hero Section */}
+      <section className="flex flex-col items-center justify-center text-center py-20 bg-blue-100 px-6">
+        <div className="max-w-4xl">
+          <h2 className="text-4xl font-bold mb-4">
+            Welcome to Urban Boutique Hotel
+          </h2>
+          <p className="text-lg mb-4">
+            A modern haven, a crafted experience, a city retreat. Hotel Urban
+            Boutique is more than just a place to stay—it is a reflection of
+            contemporary elegance blended with warm hospitality. Tucked within
+            the heart of the city, it offers a seamless escape where comfort
+            meets culture, and every detail tells a story.
+          </p>
+          <p className="text-lg mb-4">
+            Designed with a spirit of sophistication, Hotel Urban Boutique
+            embraces clean lines, curated décor, and a vibrant energy that
+            mirrors the rhythm of urban life. Here, modern design meets timeless
+            charm, and every moment feels effortlessly refined.
+          </p>
+          <p className="text-lg mb-10">
+            At Hotel Urban Boutique, you do not simply visit. You discover. You
+            connect. You feel at home.
+          </p>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+          <button className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+            BOOK YOUR EXPERIENCE
+          </button>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+      </section>
+
+
+    
+      {/* Rooms Section */}
+      <section className="p-10 bg-gray-50">
+        <h3 className="text-3xl font-bold text-center mb-8">Our Rooms</h3>
+        <div className="grid md:grid-cols-3 gap-6">
+          {/* Room 1 */}
+          <div className="bg-white shadow-md rounded-lg overflow-hidden">
+            <img
+              src="/room1.png"
+              alt="Room 1"
+              className="w-full h-48 object-cover"
+            />
+            <div className="p-6">
+              <h4 className="text-xl font-semibold mb-2">Deluxe Room</h4>
+              <p className="text-gray-600 mb-4">
+                Spacious and elegant room with city view.
+              </p>
+              <button className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                Book
+              </button>
+            </div>
+          </div>
+
+          {/* Room 2 */}
+          <div className="bg-white shadow-md rounded-lg overflow-hidden">
+            <img
+              src="/room2.png"
+              alt="Room 2"
+              className="w-full h-48 object-cover"
+            />
+            <div className="p-6">
+              <h4 className="text-xl font-semibold mb-2">Suite</h4>
+              <p className="text-gray-600 mb-4">
+                Luxury suite with living area and balcony.
+              </p>
+              <button className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                Book
+              </button>
+            </div>
+          </div>
+
+          {/* Room 3 */}
+          <div className="bg-white shadow-md rounded-lg overflow-hidden">
+            <img
+              src="/image.png"
+              alt="Room 3"
+              className="w-full h-48 object-cover"
+            />
+            <div className="p-6">
+              <h4 className="text-xl font-semibold mb-2">Family Room</h4>
+              <p className="text-gray-600 mb-4">
+                Perfect for family stays with extra space.
+              </p>
+              <button className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                Book
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Dining Section */}
+      <section className="px-6 py-16 space-y-20">
+        <div className="flex flex-col md:flex-row items-center justify-center gap-1 mx-10 pl-15 pr-5">
+          {/* Text */}
+          <div className="p-10">
+            <h2 className="text-3xl font-bold ">Dining</h2>
+            <h2 className="text-3xl font-bold ">________</h2>
+
+            <p className="text-gray-600 mt-10 mb-4">
+              Hotel Urban offers two distinct dining experiences, each grounded
+              in a shared philosophy of sustainability and exceptional flavor...
+            </p>
+            <a href="#" className="text-blue-600 font-semibold">
+              Dine with us
+            </a>
+          </div>
+
+          {/* Image */}
+          <div className="p-10 ">
+            <img
+              src="/dining.png"
+              alt="Dining"
+              // height={100}
+              className=" shadow-md h-[550px] w-[850px] object-cover"
+            />
+          </div>
+        </div>
+
+        {/* Meeting Section */}
+        <div className="flex flex-col md:flex-row items-center justify-center gap-10 ml-30">
+          <div>
+            <img
+              src="/meetingRoom.png"
+              alt="Experience"
+              className=" shadow-md h-[600px] w-[600px]"
+            />
+          </div>
+
+          <div className="pr-15 pl-10">
+            <h2 className="text-3xl font-bold">Meetings</h2>
+             <h2 className="text-3xl font-bold ">___________</h2>
+            
+
+            <p className="text-gray-600 mt-10 mb-4">
+              At Hotel Urban, every moment is thoughtfully crafted to bring you
+              closer to nature and yourself...
+            </p>
+            <a href="#" className="text-blue-600 font-semibold">
+              Discover More
+            </a>
+          </div>
+        </div>
+      </section>
+
+
+      {/* Map Section */}
+      <section className="bg-blue-200 flex justify-center p-10">
+        <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1425.6573922441455!2d83.95918756935161!3d28.216238793482756!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3995959ad546c07d%3A0x5a51a59576cc5374!2sUrban%20Boutique%20Hotel%20Pokhara!5e0!3m2!1sen!2snp!4v1759936990793!5m2!1sen!2snp"
+        className="w-full max-w-[700px] h-[400px] rounded-lg shadow-md"
+          allowFullScreen
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+  
+        ></iframe>
+      </section>
+
+
+
+      
+    </main>
+
+   
+    </>
+
+    
   );
 }
+
+{/* <footer className="bg-gray-900 text-white text-center p-6">
+        <p>© 2025 Urban Hotel. All rights reserved.</p>
+      </footer> */}
+// export default function Home() {
+//   const [count, setCount] = useState(0);
+//   useEffect(()=> {
+//     alert("Hello");
+//   }, [count]);
+//       return(
+  
+//       <>
+//       <p> {count} </p>
+//       <button className="rounded-3xl bg-amber-900 text-white hover:bg-amber-500 p-4"
+//       onClick={()=>{setCount(count+1)}}>
+//         Click Me!
+//       </button>
+//       This is home page
+//       </>
+//       )
+  
+// }
