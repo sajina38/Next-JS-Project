@@ -25,10 +25,10 @@ export default function Navbar() {
             <div className="relative ">
               <button 
               onClick={() => setIsOpen(!isOpen)} 
-              className="hover:text-gray-300 transition flex items-center gap-1 cursor-pointer">Accommodation</button>
+              className="hover:text-gray-300 transition flex items-center gap-1">Accommodation</button>
               
               {isOpen && (
-                  <div className="absolute left-0 mt-2 hover:block bg-white text-black rounded-md shadow-lg min-w-[160px] z-50">
+                  <div className="absolute left-0 mt-2 hidden hover:block bg-white text-black rounded-md shadow-lg min-w-[160px] z-50">
                     <ul> 
                       <li> 
                         <Link href="/rooms" className="block px-4 py-2 hover:bg-gray-100">Rooms</Link>
