@@ -1,26 +1,34 @@
-"use client";
+// "use client";
 import { useEffect, useState } from "react";
 import RoomCard from "@/component/roomCard";
+import { useBlogs } from "../query/useBlogs";
 
 export default function RoomsPage() {
   const [rooms, setRooms] = useState([]); // state to store fetched data
   //use state ko value aile 0 cha
    
 
-  useEffect(() => {
-    const fetchRooms = async () => {
-      try {
-        const res = await fetch("https://admin.luxmiivastravatika.com/api/product"); 
-        const data = await res.json(); // convert response to JSON
-        console.log(data.data.products);
-        setRooms(data.data.products); //setRooms ma data halesi rooms ma value ayo 
-      } catch (error) {
-        console.error("Error fetching rooms:", error);
-      }
-    };
+  // useEffect(() => {
+    
+    // const fetchRooms = async () => {
+    //   try {
+    //     const res = await fetch("https://admin.luxmiivastravatika.com/api/product"); 
+    //     const data = await res.json(); // convert response to JSON
+    //     console.log(data.data.products);
+    //     setRooms(data.data.products); //setRooms ma data halesi rooms ma value ayo 
+    //   } catch (error) {
+    //     console.error("Error fetching rooms:", error);
+    //   }
+    // };
+    // fetchRooms();
 
-    fetchRooms();
-  }, []); // run once on page load
+    //yo above code home ma dekhauna cha bhaney feri home ma lekhna parthyo 
+    
+   const {data:blogs}=useBlogs() 
+   //yo function jata ni use garna milcha
+
+  // }, []); 
+  // run once on page load
 
   return (
     <div className="p-6">
