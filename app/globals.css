@@ -1,1 +1,92 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* fonts */
+  --font-body:
+    ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
+    "Apple Color Emoji", "Segoe UI Emoji";
+  --font-heading: ui-serif, Georgia, "Times New Roman", Times, serif;
+
+  /* Bagaicha-inspired palette (no neon) */
+  --bg: #fbfaf7; /* ivory */
+  --surface: #f3f1ea; /* warm sand */
+  --surface-2: #ffffff; /* pure white blocks */
+  --text: #151515; /* soft black */
+  --muted: #6b6b6b; /* muted text */
+  --line: rgba(21, 21, 21, 0.14); /* thin lines */
+  --brand: #2f4a57; /* lake blue-gray (buttons/links) */
+  --brand-soft: rgba(47, 74, 87, 0.12);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* Headings serif */
+.font-heading,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-heading);
+  letter-spacing: 0.2px;
+}
+
+/* Helpers */
+.container-max {
+  width: min(1120px, calc(100% - 48px));
+  margin-inline: auto;
+}
+
+.section-pad {
+  padding: 72px 0;
+}
+
+.hr-line {
+  height: 1px;
+  background: var(--line);
+}
+
+/* Buttons */
+.btn-primary {
+  background: var(--brand);
+  color: #fff;
+  border-radius: 999px;
+  padding: 12px 22px;
+  transition: opacity 0.2s ease;
+}
+.btn-primary:hover {
+  opacity: 0.9;
+}
+
+.btn-outline {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  border-radius: 999px;
+  padding: 12px 22px;
+  transition: background 0.2s ease;
+}
+.btn-outline:hover {
+  background: var(--surface);
+}
+
+/* Cards */
+.card {
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+}
