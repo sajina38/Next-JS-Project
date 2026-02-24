@@ -94,6 +94,8 @@ export default function Navbar() {
 
             <a href="#" className="hover:text-gray-300 transition">About Us</a>
             <a href="#" className="hover:text-gray-300 transition">Contact</a>
+            <Link href="/login" className="hover:text-gray-300 transition">Login</Link>
+            <Link href="/register" className="hover:text-gray-300 transition">Register</Link>
           </div>
 
           {/* Spacer for mobile to balance hamburger */}
@@ -112,6 +114,8 @@ export default function Navbar() {
             <a href="#" className="block hover:text-gray-300">Booking</a>
             <a href="#" className="block hover:text-gray-300">About Us</a>
             <a href="#" className="block hover:text-gray-300">Contact</a>
+            <Link href="/login" className="block hover:text-gray-300">Login</Link>
+            <Link href="/register" className="block hover:text-gray-300">Register</Link>
           </div>
         )}
       </div>
