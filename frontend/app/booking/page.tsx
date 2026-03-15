@@ -1,38 +1,66 @@
-"use client"
-import { useState } from "react";
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth";
+import api from "@/lib/api";
 
 export default function Booking() {
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
 
-        const [formData, setFormData] = useState({
-            name: "",
-            email: "",
-            checkIn: "",
-            checkOut: "",
-            roomType: ""
-    
-        })
-    
-        const handleChange = (e: React.ChangeEvent<HTMLInputElement| HTMLSelectElement | HTMLTextAreaElement>) => {
-        const { name, value } = e.target;
-        setFormData((prev) => ({ ...prev, [name]: value, }));
-        // ... operator le input field ma lekhisakeko value save garcha
-        // [name]: value le empty field ma lekheko value lincha
-    
-        };
-    
-        const handleSubmit = async (e:React.FormEvent<HTMLFormElement>) => 
-            {e.preventDefault();
-                console.log(formData)
-    
-        await fetch("/api/booking", {
-            method: "POST",
-            headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-        });
-        setFormData({ name: "", email: "", checkIn: "" ,checkOut: "", roomType: ""});
-            }
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/login");
+    }
+  }, [authLoading, user, router]);
+
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    checkIn: "",
+    checkOut: "",
+    roomType: "",
+  });
+  const [submitError, setSubmitError] = useState("");
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setSubmitError("");
+    setSubmitLoading(true);
+    setSuccess(false);
+    try {
+      await api.post("/bookings/", {
+        room: 1,
+        guest_name: formData.name,
+        check_in: formData.checkIn,
+        check_out: formData.checkOut,
+      });
+      setSuccess(true);
+      setFormData({ name: "", email: "", checkIn: "", checkOut: "", roomType: "" });
+    } catch {
+      setSubmitError("Booking failed. Please try again.");
+    } finally {
+      setSubmitLoading(false);
+    }
+  };
+
+  if (authLoading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-500">Loading...</p>
+      </div>
+    );
+  }
 
     return (
         <div className="min-h-screen bg-white flex flex-col items-center p-10">
@@ -43,6 +71,17 @@ export default function Booking() {
         Experience the elegance of Urban Boutique Hotel. Fill in your details
         below to reserve your perfect stay.
         </p>
+
+        {success && (
+          <div className="bg-green-50 text-green-700 text-sm p-4 rounded-lg mb-6 w-full max-w-2xl">
+            Booking confirmed successfully!
+          </div>
+        )}
+        {submitError && (
+          <div className="bg-red-50 text-red-600 text-sm p-4 rounded-lg mb-6 w-full max-w-2xl">
+            {submitError}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="bg-gray-50 shadow-lg rounded-xl p-8 w-full max-w-2xl space-y-4">
         {/* "space-y-4" le space dincha div haru ko bich */}
@@ -118,10 +157,10 @@ export default function Booking() {
 
             <button
             type="submit"
-            className="bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-all w-full"
-            // transition-all le hover smooth garaucha
+            disabled={submitLoading}
+            className="bg-blue-600 text-white py-3 rounded-full hover:bg-blue-700 transition-all w-full disabled:opacity-50 disabled:cursor-not-allowed"
             >
-            Confirm Booking
+            {submitLoading ? "Booking..." : "Confirm Booking"}
             </button>
         </form>
     </div>

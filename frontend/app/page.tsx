@@ -6,35 +6,32 @@ export default function Home() {
   return (
     <>
       <main className="text-gray-800">
-        {/* Hero Section */}
-        <section className="flex flex-col items-center justify-center text-center py-12 md:py-20 bg-blue-100 px-6">
-          <div className="max-w-4xl">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4">
-              Welcome to Urban Boutique Hotel
+        {/* About Section */}
+        <section className="py-16 px-6">
+          <div className="max-w-4xl mx-auto text-center">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-500 mb-3">
+              About Our Hotel
+            </p>
+            <h2 className="text-3xl md:text-4xl font-bold mb-6">
+              A Retreat in the Heart of Pokhara
             </h2>
-            <p className="text-base md:text-lg mb-4">
-              A modern haven, a crafted experience, a city retreat. Hotel Urban
-              Boutique is more than just a place to stay—it is a reflection of
-              contemporary elegance blended with warm hospitality. Tucked within
-              the heart of the city, it offers a seamless escape where comfort
-              meets culture, and every detail tells a story.
+            <div className="w-16 h-[2px] bg-blue-600 mx-auto mb-6" />
+            <p className="text-gray-600 leading-relaxed text-base md:text-lg mb-4">
+              Nestled in Lakeside, Pokhara, we blend contemporary elegance with
+              warm Nepali hospitality. Every detail — from our handpicked
+              interiors to the panoramic mountain views — is crafted to make
+              your stay unforgettable.
             </p>
-            <p className="text-base md:text-lg mb-4">
-              Designed with a spirit of sophistication, Hotel Urban Boutique
-              embraces clean lines, curated décor, and a vibrant energy that
-              mirrors the rhythm of urban life. Here, modern design meets timeless
-              charm, and every moment feels effortlessly refined.
+            <p className="text-gray-500 leading-relaxed text-sm md:text-base">
+              Whether you&apos;re here for a tranquil escape, a family
+              adventure, or a business retreat, we offer thoughtfully designed
+              spaces, exceptional dining, and personalised service that feels
+              like home.
             </p>
-            <p className="text-base md:text-lg mb-10">
-              At Hotel Urban Boutique, you do not simply visit. You discover. You
-              connect. You feel at home.
-            </p>
-
-            <button className="px-6 py-3 bg-blue-600 text-white rounded-lg cursor-pointer transition-colors hover:bg-blue-700 active:bg-blue-800">
-              BOOK YOUR EXPERIENCE
-            </button>
           </div>
         </section>
+
+        <div className="hr-line container-max" />
 
         {/* Rooms Section */}
         <section className="py-10 px-6 bg-gray-50">
@@ -53,7 +50,7 @@ export default function Home() {
                   <p className="text-gray-600 mb-4">
                     Spacious and elegant room with city view.
                   </p>
-                  <button className="bg-blue-600 text-white px-4 py-2 rounded cursor-pointer transition-colors hover:bg-blue-700 active:bg-blue-800">
+                  <button className="bg-blue-600 text-white px-5 py-2 rounded-full cursor-pointer transition-colors hover:bg-blue-700 active:bg-blue-800">
                     Book
                   </button>
                 </div>
@@ -71,7 +68,7 @@ export default function Home() {
                   <p className="text-gray-600 mb-4">
                     Luxury suite with living area and balcony.
                   </p>
-                  <button className="bg-blue-600 text-white px-4 py-2 rounded cursor-pointer transition-colors hover:bg-blue-700 active:bg-blue-800">
+                  <button className="bg-blue-600 text-white px-5 py-2 rounded-full cursor-pointer transition-colors hover:bg-blue-700 active:bg-blue-800">
                     Book
                   </button>
                 </div>
@@ -89,7 +86,7 @@ export default function Home() {
                   <p className="text-gray-600 mb-4">
                     Perfect for family stays with extra space.
                   </p>
-                  <button className="bg-blue-600 text-white px-4 py-2 rounded cursor-pointer transition-colors hover:bg-blue-700 active:bg-blue-800">
+                  <button className="bg-blue-600 text-white px-5 py-2 rounded-full cursor-pointer transition-colors hover:bg-blue-700 active:bg-blue-800">
                     Book
                   </button>
                 </div>
