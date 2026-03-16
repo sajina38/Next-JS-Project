@@ -1,154 +1,103 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import RoomCard from "@/component/roomCard";
+import api from "@/lib/api";
 
-const rooms = [
-  {
-    title: "Deluxe Room",
-    price: 5400,
-    description:
-      "A spacious and elegant room designed with modern aesthetics. Enjoy breathtaking city views from your private balcony and premium amenities for a comfortable stay.",
-    image:
-      "https://i.pinimg.com/736x/bb/af/90/bbaf90a1b86c6b5c46ae9297742d27bc.jpg",
-    rating: 5,
-    amenities: [
-      { icon: "📶", label: "Wi-Fi" },
-      { icon: "❄️", label: "AC" },
-      { icon: "🍸", label: "Minibar" },
-      { icon: "📺", label: "Smart TV" },
-    ],
-    badge: "Most Popular",
-    size: "standard",
-    bedType: "double",
-  },
-  {
-    title: "Executive Suite",
-    price: 10500,
-    description:
-      "Luxury redefined. Our suites feature separate living areas, designer furniture, and exclusive access to our club lounge. Perfect for business or romantic getaways.",
-    image:
-      "https://i.pinimg.com/1200x/c5/7b/3c/c57b3cd14908c90fe35547fa051b9982.jpg",
-    rating: 5,
-    amenities: [
-      { icon: "📶", label: "Premium Wi-Fi" },
-      { icon: "🛁", label: "Jacuzzi" },
-      { icon: "☕", label: "Nespresso" },
-      { icon: "💼", label: "Workspace" },
-    ],
-    size: "large",
-    bedType: "king",
-  },
-  {
-    title: "Family Room",
-    price: 7800,
-    description:
-      "Thoughtfully designed for families. Features two queen-sized beds, extra storage space, and child-friendly amenities to make your stay feel just like home.",
-    image:
-      "https://i.pinimg.com/1200x/83/9e/fe/839efe28d4e47810182789ead59a1ceb.jpg",
-    rating: 4,
-    amenities: [
-      { icon: "📶", label: "Free Wi-Fi" },
-      { icon: "🛏️", label: "2 Queen Beds" },
-      { icon: "🧊", label: "Large Fridge" },
-      { icon: "🧒", label: "Kid's Kit" },
-    ],
-    size: "large",
-    bedType: "queen",
-  },
-  {
-    title: "Deluxe Twin",
-    price: 4200,
-    description:
-      "Perfect for friends or colleagues travelling together. Two comfortable single beds with modern decor and all the essentials for a relaxing stay.",
-    image:
-      "https://i.pinimg.com/1200x/1e/ad/dd/1eaddd1de173c8c57baf622bfe948d41.jpg",
-    rating: 4,
-    amenities: [
-      { icon: "📶", label: "Wi-Fi" },
-      { icon: "❄️", label: "AC" },
-      { icon: "📺", label: "Smart TV" },
-    ],
-    size: "standard",
-    bedType: "twin",
-  },
-  {
-    title: "Deluxe Queen",
-    price: 6000,
-    description:
-      "An elegant retreat featuring a plush queen-sized bed, stylish interiors, and a private balcony overlooking the garden. Ideal for couples.",
-    image:
-      "https://i.pinimg.com/1200x/f3/1c/f8/f31cf88530f88da002f79a58306ae387.jpg",
-    rating: 5,
-    amenities: [
-      { icon: "📶", label: "Wi-Fi" },
-      { icon: "❄️", label: "AC" },
-      { icon: "🍸", label: "Minibar" },
-      { icon: "📺", label: "Smart TV" },
-    ],
-    size: "standard",
-    bedType: "queen",
-  },
-  {
-    title: "Single Room",
-    price: 2800,
-    description:
-      "A cozy and budget-friendly option for solo travellers. Compact yet comfortable, with everything you need for a pleasant stay.",
-    image:
-      "https://i.pinimg.com/1200x/b2/2a/ec/b22aec02ecd50042053a51886ad30c24.jpg",
-    rating: 3,
-    amenities: [
-      { icon: "📶", label: "Free Wi-Fi" },
-      { icon: "❄️", label: "AC" },
-    ],
-    size: "compact",
-    bedType: "single",
-  },
-];
-
-const SIZE_OPTIONS = [
-  { value: "all", label: "All Sizes" },
-  { value: "compact", label: "Compact (< 25 m²)" },
-  { value: "standard", label: "Standard (25–40 m²)" },
-  { value: "large", label: "Large (40+ m²)" },
-];
-
-const BED_OPTIONS = [
-  { value: "all", label: "All Bed Types" },
-  { value: "single", label: "Single Bed" },
-  { value: "twin", label: "Twin Bed" },
-  { value: "double", label: "Double Bed" },
-  { value: "queen", label: "Queen Bed" },
-  { value: "king", label: "King Bed" },
-];
+interface Room {
+  id: number;
+  room_number: string;
+  room_type: string;
+  name: string;
+  description: string;
+  price: string;
+  capacity: number;
+  image: string;
+  is_available: boolean;
+}
 
 export default function RoomsPage() {
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
   const [priceRange, setPriceRange] = useState<[number, number]>([1000, 15000]);
-  const [roomSize, setRoomSize] = useState("all");
-  const [bedType, setBedType] = useState("all");
+  const [roomType, setRoomType] = useState("all");
   const [appliedFilters, setAppliedFilters] = useState({
     priceRange: [1000, 15000] as [number, number],
-    roomSize: "all",
-    bedType: "all",
+    roomType: "all",
   });
+
+  useEffect(() => {
+    console.log("Fetching rooms from:", "http://localhost:8000/api/rooms/");
+    api
+      .get("/rooms/")
+      .then((res) => {
+        console.log("Backend response:", res.data);
+        setRooms(res.data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("API error:", err);
+        setError(true);
+        setLoading(false);
+      });
+  }, []);
+
+  const roomTypes = useMemo(() => {
+    const types = [...new Set(rooms.map((r) => r.room_type))];
+   return [
+      { value: "all", label: "All Types" },
+      ...types.map((t) => ({ value: t, label: t })),
+    ];
+  }, [rooms]);
 
   const filteredRooms = useMemo(() => {
     return rooms.filter((room) => {
+      const price = parseFloat(room.price);
       const inPrice =
-        room.price >= appliedFilters.priceRange[0] &&
-        room.price <= appliedFilters.priceRange[1];
-      const inSize =
-        appliedFilters.roomSize === "all" ||
-        room.size === appliedFilters.roomSize;
-      const inBed =
-        appliedFilters.bedType === "all" ||
-        room.bedType === appliedFilters.bedType;
-      return inPrice && inSize && inBed;
+        price >= appliedFilters.priceRange[0] &&
+        price <= appliedFilters.priceRange[1];
+      const inType =
+        appliedFilters.roomType === "all" ||
+        room.room_type === appliedFilters.roomType;
+      return inPrice && inType;
     });
-  }, [appliedFilters]);
+  }, [rooms, appliedFilters]);
 
   function applyFilters() {
-    setAppliedFilters({ priceRange, roomSize, bedType });
+    setAppliedFilters({ priceRange, roomType });
+  }
+
+  if (loading) {
+    return (
+      <div className="section-pad">
+        <div className="container-max flex justify-center py-20">
+          <div className="text-center">
+            <div className="w-10 h-10 border-4 border-gray-200 border-t-emerald-700 rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-[var(--muted)]">Loading rooms...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="section-pad">
+        <div className="container-max text-center py-20">
+          <p className="text-red-500 text-lg mb-4">
+            Failed to load rooms. Make sure the backend server is running.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="btn-primary"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -173,7 +122,7 @@ export default function RoomsPage() {
                 onChange={(e) =>
                   setPriceRange([priceRange[0], Number(e.target.value)])
                 }
-                className="w-full accent-blue-600"
+                className="w-full accent-emerald-700"
               />
               <div className="flex justify-between text-xs text-[var(--muted)] mt-1">
                 <span>Rs. {priceRange[0].toLocaleString()}</span>
@@ -181,35 +130,17 @@ export default function RoomsPage() {
               </div>
             </div>
 
-            {/* Room Size */}
+            {/* Room Type */}
             <div className="min-w-[180px]">
               <label className="text-sm font-semibold text-[var(--text)] mb-2 block">
-                Room Size
+                Room Type
               </label>
               <select
-                value={roomSize}
-                onChange={(e) => setRoomSize(e.target.value)}
-                className="w-full border border-[var(--line)] rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={roomType}
+                onChange={(e) => setRoomType(e.target.value)}
+                className="w-full border border-[var(--line)] rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600"
               >
-                {SIZE_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Bed Type */}
-            <div className="min-w-[160px]">
-              <label className="text-sm font-semibold text-[var(--text)] mb-2 block">
-                Bed Type
-              </label>
-              <select
-                value={bedType}
-                onChange={(e) => setBedType(e.target.value)}
-                className="w-full border border-[var(--line)] rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                {BED_OPTIONS.map((opt) => (
+                {roomTypes.map((opt) => (
                   <option key={opt.value} value={opt.value}>
                     {opt.label}
                   </option>
@@ -220,7 +151,7 @@ export default function RoomsPage() {
             {/* Apply Button */}
             <button
               onClick={applyFilters}
-              className="bg-blue-600 text-white px-6 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-2 hover:bg-blue-700 transition-colors shrink-0 cursor-pointer"
+              className="bg-emerald-700 text-white px-6 py-2.5 rounded-full text-sm font-semibold flex items-center gap-2 hover:bg-emerald-800 transition-colors shrink-0 cursor-pointer"
             >
               <svg
                 className="w-4 h-4"
@@ -243,17 +174,14 @@ export default function RoomsPage() {
         {/* Room Listing */}
         <div className="flex flex-col gap-6">
           {filteredRooms.length > 0 ? (
-            filteredRooms.map((room, index) => (
+            filteredRooms.map((room) => (
               <RoomCard
-                key={index}
-                id={rooms.indexOf(room) + 1}
-                title={room.title}
-                price={room.price}
+                key={room.id}
+                id={room.id}
+                title={room.name}
+                price={parseFloat(room.price)}
                 description={room.description}
                 image={room.image}
-                rating={room.rating}
-                amenities={room.amenities}
-                badge={room.badge}
               />
             ))
           ) : (

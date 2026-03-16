@@ -1,17 +1,21 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from .models import Room
+from .serializers import RoomSerializer
 
 
 @api_view(['GET'])
 def room_list(request):
-    rooms = Room.objects.all().values()
-    return Response(rooms)
+    rooms = Room.objects.all()
+    serializer = RoomSerializer(rooms, many=True)
+    return Response(serializer.data)
 
 
 @api_view(['GET'])
 def room_detail(request, pk):
-    room = Room.objects.filter(pk=pk).values().first()
-    if not room:
+    try:
+        room = Room.objects.get(pk=pk)
+    except Room.DoesNotExist:
         return Response({"error": "Room not found"}, status=404)
-    return Response(room)
+    serializer = RoomSerializer(room)
+    return Response(serializer.data)

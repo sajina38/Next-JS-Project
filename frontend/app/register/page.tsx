@@ -90,21 +90,6 @@ export default function RegisterPage() {
               curated experiences, and member-only rewards.
             </p>
 
-            <div className="mt-8 flex items-center gap-3">
-              <div className="flex -space-x-2">
-                {[1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    className="w-10 h-10 rounded-full bg-white/30 border-2 border-white flex items-center justify-center text-sm font-medium"
-                  >
-                    ?
-                  </div>
-                ))}
-              </div>
-              <span className="text-white/90 text-sm">
-                Join 5,000+ members worldwide
-              </span>
-            </div>
           </div>
         </div>
       </div>
@@ -215,11 +200,11 @@ export default function RegisterPage() {
               />
               <span className="text-sm text-gray-600">
                 I agree to the{" "}
-                <Link href="#" className="text-blue-600">
+                <Link href="#" className="text-emerald-700">
                   Terms of Service
                 </Link>{" "}
                 and{" "}
-                <Link href="#" className="text-blue-600">
+                <Link href="#" className="text-emerald-700">
                   Privacy Policy
                 </Link>
               </span>
@@ -228,7 +213,7 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 text-white py-3 rounded-full hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-emerald-700 text-white py-3 rounded-full hover:bg-emerald-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? "Creating Account..." : "Create Account"}
             </button>
@@ -236,7 +221,7 @@ export default function RegisterPage() {
 
           <p className="mt-6 text-center text-gray-600">
             Already have an account?{" "}
-            <Link href="/login" className="text-blue-600 font-semibold">
+            <Link href="/login" className="text-emerald-700 font-semibold">
               Log In
             </Link>
           </p>

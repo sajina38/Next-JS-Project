@@ -132,7 +132,7 @@ export default function Navbar() {
           <div className="flex-shrink-0 w-[100px] flex justify-end">
             <Link
               href="/rooms"
-              className="px-5 py-2 text-sm font-medium text-white bg-blue-600 rounded-full hover:bg-blue-700 active:scale-[0.98] transition-all duration-300"
+              className="px-5 py-2 text-sm font-medium text-white bg-emerald-700 rounded-full hover:bg-emerald-800 active:scale-[0.98] transition-all duration-300"
             >
               Book Now
             </Link>
@@ -190,7 +190,7 @@ export default function Navbar() {
                   key={item.href}
                   href={item.href}
                   onClick={() => setMenuOpen(false)}
-                  className="block w-full text-left px-4 py-3 rounded-lg text-gray-700 hover:text-blue-600 hover:bg-blue-50 hover:translate-x-1 hover:scale-[1.01] origin-left transition-all duration-300 font-medium"
+                  className="block w-full text-left px-4 py-3 rounded-lg text-gray-700 hover:text-emerald-700 hover:bg-emerald-50 hover:translate-x-1 hover:scale-[1.01] origin-left transition-all duration-300 font-medium"
                 >
                   {item.label}
                 </Link>

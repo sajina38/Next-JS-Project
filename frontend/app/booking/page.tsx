@@ -85,7 +85,7 @@ export default function Booking() {
 
         <form onSubmit={handleSubmit} className="bg-gray-50 shadow-lg rounded-xl p-8 w-full max-w-2xl space-y-4">
         {/* "space-y-4" le space dincha div haru ko bich */}
-        {/* "focus:ring-2 focus:ring-blue-500" le glowing blue line banaucha when clicked */}
+        {/* "focus:ring-2 focus:ring-emerald-600" le glowing blue line banaucha when clicked */}
             <div className="flex flex-col">
                 <label className="text-gray-700 font-semibold mb-2">Full Name</label>
                 <input
@@ -94,7 +94,7 @@ export default function Booking() {
                 value={formData.name}
                 onChange={handleChange}
                 placeholder="Enter your full name"
-                className="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-600"
                 />
             </div>
 
@@ -106,7 +106,7 @@ export default function Booking() {
                 onChange={handleChange}
                 type="email"
                 placeholder="Enter your email"
-                className="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-600"
                 />
             </div>
 
@@ -122,7 +122,7 @@ export default function Booking() {
                 onChange={handleChange}
                 type="date" 
                 // mm/dd/yy and calendar dincha
-                className="p-3 border rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="p-3 border rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-emerald-600"
                 />
                 </div>
 
@@ -135,7 +135,7 @@ export default function Booking() {
                 value={formData.checkOut}
                 onChange={handleChange}
                 type="date"
-                className="p-3 border rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="p-3 border rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-emerald-600"
                 />
                 </div>
             </div>
@@ -148,7 +148,7 @@ export default function Booking() {
                 onChange={handleChange}
                 
                 </> */}
-                <select className="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <select className="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-600">
                     <option value="formData.roomType">Deluxe Room</option>
                     <option value="formData.roomType">Suite</option>
                     <option value="formData.roomType">Family Room</option>
@@ -158,7 +158,7 @@ export default function Booking() {
             <button
             type="submit"
             disabled={submitLoading}
-            className="bg-blue-600 text-white py-3 rounded-full hover:bg-blue-700 transition-all w-full disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-emerald-700 text-white py-3 rounded-full hover:bg-emerald-800 transition-all w-full disabled:opacity-50 disabled:cursor-not-allowed"
             >
             {submitLoading ? "Booking..." : "Confirm Booking"}
             </button>

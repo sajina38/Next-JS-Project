@@ -49,13 +49,13 @@ export default function About() {
           transition={{ duration: 0.6 }}
           className="max-w-3xl mx-auto text-center"
         >
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-500 mb-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600 mb-4">
             Our Mission
           </p>
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-4">
             Delivering hospitality through thoughtful design and local charm.
           </h2>
-          <div className="w-16 h-0.5 bg-blue-500 mx-auto mb-6" />
+          <div className="w-16 h-0.5 bg-emerald-600 mx-auto mb-6" />
           <p className="text-gray-600 text-lg leading-relaxed">
             At Urban Boutique Hotel, we believe a stay should feel like more than a place to rest. It is a space where refined style meets genuine hospitality. We are dedicated to crafting experiences that stay with you long after you leave.
           </p>
@@ -72,7 +72,7 @@ export default function About() {
               viewport={{ once: true, margin: "-50px" }}
               transition={{ duration: 0.6 }}
             >
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-500 mb-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600 mb-4">
                 Our Story
               </p>
               <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6">
@@ -86,7 +86,7 @@ export default function About() {
               </p>
               <Link
                 href="/contact"
-                className="inline-flex items-center gap-2 text-blue-600 font-medium hover:text-blue-700 hover:gap-3 transition-all duration-300"
+                className="inline-flex items-center gap-2 text-emerald-700 font-medium hover:text-emerald-800 hover:gap-3 transition-all duration-300"
               >
                 Learn more about our heritage
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -140,7 +140,7 @@ export default function About() {
               transition={{ duration: 0.5, delay: i * 0.1 }}
               className="group bg-white rounded-xl p-8 shadow-sm hover:shadow-xl hover:-translate-y-1 hover:scale-[1.02] transition-all duration-300 cursor-default"
             >
-              <div className="text-blue-500 mb-4 group-hover:text-blue-600 transition-colors duration-300">
+              <div className="text-emerald-600 mb-4 group-hover:text-emerald-700 transition-colors duration-300">
                 {card.icon}
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-3">{card.title}</h3>

@@ -61,7 +61,7 @@ export default function RoomCard({
   return (
     <div className="card flex flex-col md:flex-row overflow-hidden transition-shadow duration-300 hover:shadow-lg relative">
       {badge && (
-        <span className="absolute top-4 left-4 z-10 bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-md uppercase tracking-wide">
+        <span className="absolute top-4 left-4 z-10 bg-emerald-700 text-white text-xs font-bold px-3 py-1 rounded-md uppercase tracking-wide">
           {badge}
         </span>
       )}
@@ -101,7 +101,7 @@ export default function RoomCard({
         </div>
 
         <div className="flex items-end justify-between mt-2">
-          <p className="text-2xl font-bold text-blue-600">
+          <p className="text-2xl font-bold text-emerald-700">
             Rs. {price.toLocaleString()}
             <span className="text-sm font-normal text-[var(--muted)]">
               {" "}
@@ -110,7 +110,7 @@ export default function RoomCard({
           </p>
           <Link
             href={id ? `/rooms/${id}` : "/rooms"}
-            className="border-2 border-blue-600 text-blue-600 px-6 py-2 rounded-lg text-sm font-semibold transition-colors duration-200 hover:bg-blue-600 hover:text-white"
+            className="border-2 border-emerald-700 text-emerald-700 px-6 py-2 rounded-full text-sm font-semibold transition-colors duration-200 hover:bg-emerald-700 hover:text-white"
           >
             View Details
           </Link>

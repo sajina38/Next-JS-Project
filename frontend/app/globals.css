@@ -14,8 +14,8 @@
   --text: #151515; /* soft black */
   --muted: #6b6b6b; /* muted text */
   --line: rgba(21, 21, 21, 0.14); /* thin lines */
-  --brand: #2f4a57; /* lake blue-gray (buttons/links) */
-  --brand-soft: rgba(47, 74, 87, 0.12);
+  --brand: #166534; /* dark green (buttons/links) */
+  --brand-soft: rgba(22, 101, 52, 0.12);
 }
 
 html,
