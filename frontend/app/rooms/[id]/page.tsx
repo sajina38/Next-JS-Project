@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
@@ -15,28 +15,11 @@ interface RoomData {
   description: string;
   price: string;
   capacity: number;
-  image: string;
+  image: string | null;
   is_available: boolean;
 }
 
-const GALLERY_POOL = [
-  "https://i.pinimg.com/736x/bb/af/90/bbaf90a1b86c6b5c46ae9297742d27bc.jpg",
-  "https://i.pinimg.com/1200x/c5/7b/3c/c57b3cd14908c90fe35547fa051b9982.jpg",
-  "https://i.pinimg.com/1200x/83/9e/fe/839efe28d4e47810182789ead59a1ceb.jpg",
-  "https://i.pinimg.com/1200x/1e/ad/dd/1eaddd1de173c8c57baf622bfe948d41.jpg",
-  "https://i.pinimg.com/1200x/f3/1c/f8/f31cf88530f88da002f79a58306ae387.jpg",
-  "https://i.pinimg.com/1200x/b2/2a/ec/b22aec02ecd50042053a51886ad30c24.jpg",
-];
-
-function getRoomImages(id: number, primaryImage: string): string[] {
-  const images = [primaryImage];
-  const start = (id - 1) % GALLERY_POOL.length;
-  for (let i = 0; images.length < 4; i++) {
-    const img = GALLERY_POOL[(start + i) % GALLERY_POOL.length];
-    if (img !== primaryImage) images.push(img);
-  }
-  return images;
-}
+const PLACEHOLDER = "/room1.png";
 
 const AMENITIES = [
   {
@@ -109,14 +92,13 @@ export default function RoomDetailPage() {
   const params = useParams();
   const roomId = Number(params.id);
   const { user } = useAuth();
+  const router = useRouter();
 
   const [room, setRoom] = useState<RoomData | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
-  const [activeImage, setActiveImage] = useState(0);
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [form, setForm] = useState({ guest_name: "", check_in: "", check_out: "" });
-  const [booking, setBooking] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [form, setForm] = useState({ check_in: "", check_out: "", guests: 1 });
 
   useEffect(() => {
     api
@@ -131,26 +113,21 @@ export default function RoomDetailPage() {
       });
   }, [roomId]);
 
-  const images = room ? getRoomImages(roomId, room.image) : GALLERY_POOL.slice(0, 4);
+  const roomImage = room?.image || PLACEHOLDER;
 
-  const handleBooking = async () => {
+  const handleBooking = () => {
     if (!user) {
       setShowAuthModal(true);
       return;
     }
-    if (!form.guest_name || !form.check_in || !form.check_out) return;
-    setBooking("loading");
-    try {
-      await api.post("/bookings/", {
-        room: roomId,
-        guest_name: form.guest_name,
-        check_in: form.check_in,
-        check_out: form.check_out,
-      });
-      setBooking("success");
-    } catch {
-      setBooking("error");
-    }
+    if (!form.check_in || !form.check_out) return;
+    const params = new URLSearchParams({
+      room: String(roomId),
+      check_in: form.check_in,
+      check_out: form.check_out,
+      guests: String(form.guests),
+    });
+    router.push(`/booking/confirm?${params.toString()}`);
   };
 
   if (loading) {
@@ -188,8 +165,8 @@ export default function RoomDetailPage() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.8 }}
-        className="relative h-[380px] md:h-[480px] bg-cover bg-center"
-        style={{ backgroundImage: `url('${room.image}')` }}
+        className="relative h-[400px] sm:h-[480px] md:h-[560px] bg-cover bg-center"
+        style={{ backgroundImage: `url('${roomImage}')` }}
       >
         <div className="absolute inset-0 bg-black/55" />
         <div className="relative z-10 h-full flex flex-col items-center justify-center text-white text-center px-6">
@@ -225,29 +202,14 @@ export default function RoomDetailPage() {
         <div className="grid lg:grid-cols-3 gap-10 lg:gap-12">
           {/* Left Column */}
           <div className="lg:col-span-2 space-y-12">
-            {/* Gallery */}
+            {/* Room Image */}
             <div>
               <div className="rounded-2xl overflow-hidden aspect-[16/10] shadow-md">
                 <img
-                  src={images[activeImage]}
+                  src={roomImage}
                   alt={room.name}
-                  className="w-full h-full object-cover transition-transform duration-500"
+                  className="w-full h-full object-cover"
                 />
-              </div>
-              <div className="mt-4 grid grid-cols-4 gap-3">
-                {images.map((img, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setActiveImage(i)}
-                    className={`rounded-xl overflow-hidden aspect-[4/3] border-2 transition-all duration-300 hover:scale-105 ${
-                      i === activeImage
-                        ? "border-emerald-600 ring-2 ring-emerald-200 opacity-100"
-                        : "border-transparent opacity-60 hover:opacity-100"
-                    }`}
-                  >
-                    <img src={img} alt="" className="w-full h-full object-cover" />
-                  </button>
-                ))}
               </div>
             </div>
 
@@ -325,90 +287,60 @@ export default function RoomDetailPage() {
                 </div>
               </div>
 
-              {booking === "success" ? (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="text-center py-6"
-                >
-                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                  <h3 className="text-lg font-bold text-gray-900 mb-1">Booking Confirmed!</h3>
-                  <p className="text-gray-500 text-sm mb-4">
-                    Your reservation has been successfully placed.
-                  </p>
-                  <Link
-                    href="/rooms"
-                    className="text-emerald-700 text-sm font-medium hover:underline"
-                  >
-                    Browse more rooms
-                  </Link>
-                </motion.div>
-              ) : (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                      Check-in
-                    </label>
-                    <input
-                      type="date"
-                      value={form.check_in}
-                      onChange={(e) => setForm((p) => ({ ...p, check_in: e.target.value }))}
-                      className="w-full p-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-shadow"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                      Check-out
-                    </label>
-                    <input
-                      type="date"
-                      value={form.check_out}
-                      onChange={(e) => setForm((p) => ({ ...p, check_out: e.target.value }))}
-                      className="w-full p-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-shadow"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                      Guest Name
-                    </label>
-                    <input
-                      type="text"
-                      value={form.guest_name}
-                      onChange={(e) => setForm((p) => ({ ...p, guest_name: e.target.value }))}
-                      placeholder="Enter your full name"
-                      className="w-full p-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-shadow"
-                    />
-                  </div>
-
-                  {booking === "error" && (
-                    <p className="text-red-500 text-sm bg-red-50 p-3 rounded-lg">
-                      Booking failed. Please try again.
-                    </p>
-                  )}
-
-                  <button
-                    onClick={handleBooking}
-                    disabled={booking === "loading" || !room.is_available}
-                    className="w-full bg-emerald-700 text-white py-3.5 rounded-full font-medium hover:bg-emerald-800 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-                  >
-                    {booking === "loading"
-                      ? "Booking..."
-                      : !room.is_available
-                        ? "Currently Unavailable"
-                        : "Book Now"}
-                  </button>
-
-                  {!user && (
-                    <p className="text-center text-xs text-gray-400">
-                      You&apos;ll need to log in to complete your booking
-                    </p>
-                  )}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                    Check-in
+                  </label>
+                  <input
+                    type="date"
+                    value={form.check_in}
+                    onChange={(e) => setForm((p) => ({ ...p, check_in: e.target.value }))}
+                    className="w-full p-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-shadow"
+                  />
                 </div>
-              )}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                    Check-out
+                  </label>
+                  <input
+                    type="date"
+                    value={form.check_out}
+                    onChange={(e) => setForm((p) => ({ ...p, check_out: e.target.value }))}
+                    className="w-full p-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-shadow"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                    Guests
+                  </label>
+                  <select
+                    value={form.guests}
+                    onChange={(e) => setForm((p) => ({ ...p, guests: Number(e.target.value) }))}
+                    className="w-full p-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-shadow"
+                  >
+                    {Array.from({ length: room.capacity }, (_, i) => i + 1).map((n) => (
+                      <option key={n} value={n}>
+                        {n} {n === 1 ? "Guest" : "Guests"}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <button
+                  onClick={handleBooking}
+                  disabled={!room.is_available}
+                  className="w-full bg-emerald-700 text-white py-3.5 rounded-full font-medium hover:bg-emerald-800 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                >
+                  {!room.is_available ? "Currently Unavailable" : "Book Now"}
+                </button>
+
+                {!user && (
+                  <p className="text-center text-xs text-gray-400">
+                    You&apos;ll need to log in to complete your booking
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </div>

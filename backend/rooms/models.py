@@ -8,7 +8,7 @@ class Room(models.Model):
     description = models.TextField(blank=True, default="")
     price = models.DecimalField(max_digits=8, decimal_places=2)
     capacity = models.IntegerField(default=2)
-    image = models.URLField(max_length=500, blank=True, default="")
+    image = models.ImageField(upload_to="rooms/", blank=True, null=True)
     is_available = models.BooleanField(default=True)
 
     def __str__(self):

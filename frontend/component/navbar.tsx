@@ -91,10 +91,10 @@ export default function Navbar() {
     <>
       {/* Hero Section with Navbar */}
       <div
-        className={`relative bg-cover bg-center ${
+        className={`bg-cover bg-center ${
           isRoomDetail
-            ? "h-16 bg-[#1a1a1a]"
-            : "h-[320px] sm:h-[380px] md:h-[420px]"
+            ? "absolute top-0 left-0 right-0 z-30 h-16"
+            : "relative h-[400px] sm:h-[480px] md:h-[560px]"
         }`}
         style={isRoomDetail ? undefined : { backgroundImage: `url('${hero.image}')` }}
       >
@@ -129,11 +129,14 @@ export default function Navbar() {
           </div>
 
           {/* Right: Book Now */}
-          <div className="flex-shrink-0 w-[100px] flex justify-end">
+          <div className="flex-shrink-0 flex justify-end">
             <Link
               href="/rooms"
-              className="px-5 py-2 text-sm font-medium text-white bg-emerald-700 rounded-full hover:bg-emerald-800 active:scale-[0.98] transition-all duration-300"
+              className="px-6 py-2.5 text-xs font-medium tracking-[0.2em] uppercase text-white bg-emerald-700 rounded-full hover:bg-emerald-800 hover:shadow-lg hover:shadow-emerald-700/30 hover:scale-105 active:scale-[0.97] transition-all duration-300 inline-flex items-center gap-2.5"
             >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+              </svg>
               Book Now
             </Link>
           </div>

@@ -12,33 +12,32 @@ interface Room {
   description: string;
   price: string;
   capacity: number;
-  image: string;
+  image: string | null;
   is_available: boolean;
 }
+
+type SortOption = "default" | "price-low" | "price-high";
 
 export default function RoomsPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  const [priceRange, setPriceRange] = useState<[number, number]>([1000, 15000]);
+  const [sortBy, setSortBy] = useState<SortOption>("default");
   const [roomType, setRoomType] = useState("all");
-  const [appliedFilters, setAppliedFilters] = useState({
-    priceRange: [1000, 15000] as [number, number],
-    roomType: "all",
-  });
+  const [availability, setAvailability] = useState("all");
+  const [appliedSort, setAppliedSort] = useState<SortOption>("default");
+  const [appliedType, setAppliedType] = useState("all");
+  const [appliedAvailability, setAppliedAvailability] = useState("all");
 
   useEffect(() => {
-    console.log("Fetching rooms from:", "http://localhost:8000/api/rooms/");
     api
       .get("/rooms/")
       .then((res) => {
-        console.log("Backend response:", res.data);
         setRooms(res.data);
         setLoading(false);
       })
-      .catch((err) => {
-        console.error("API error:", err);
+      .catch(() => {
         setError(true);
         setLoading(false);
       });
@@ -46,27 +45,36 @@ export default function RoomsPage() {
 
   const roomTypes = useMemo(() => {
     const types = [...new Set(rooms.map((r) => r.room_type))];
-   return [
+    return [
       { value: "all", label: "All Types" },
       ...types.map((t) => ({ value: t, label: t })),
     ];
   }, [rooms]);
 
   const filteredRooms = useMemo(() => {
-    return rooms.filter((room) => {
-      const price = parseFloat(room.price);
-      const inPrice =
-        price >= appliedFilters.priceRange[0] &&
-        price <= appliedFilters.priceRange[1];
-      const inType =
-        appliedFilters.roomType === "all" ||
-        room.room_type === appliedFilters.roomType;
-      return inPrice && inType;
-    });
-  }, [rooms, appliedFilters]);
+    let result = rooms.filter(
+      (room) => appliedType === "all" || room.room_type === appliedType
+    );
+
+    if (appliedAvailability === "available") {
+      result = result.filter((room) => room.is_available);
+    } else if (appliedAvailability === "booked") {
+      result = result.filter((room) => !room.is_available);
+    }
+
+    if (appliedSort === "price-low") {
+      result = [...result].sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
+    } else if (appliedSort === "price-high") {
+      result = [...result].sort((a, b) => parseFloat(b.price) - parseFloat(a.price));
+    }
+
+    return result;
+  }, [rooms, appliedType, appliedAvailability, appliedSort]);
 
   function applyFilters() {
-    setAppliedFilters({ priceRange, roomType });
+    setAppliedSort(sortBy);
+    setAppliedType(roomType);
+    setAppliedAvailability(availability);
   }
 
   if (loading) {
@@ -107,31 +115,25 @@ export default function RoomsPage() {
 
         {/* Filter Bar */}
         <div className="card p-5 mb-8">
-          <div className="flex flex-col lg:flex-row items-start lg:items-end gap-6">
-            {/* Price Range */}
-            <div className="flex-1 min-w-[200px]">
+          <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4">
+            {/* Sort By */}
+            <div className="min-w-[200px]">
               <label className="text-sm font-semibold text-[var(--text)] mb-2 block">
-                Price Range (per night)
+                Sort by Price
               </label>
-              <input
-                type="range"
-                min={1000}
-                max={15000}
-                step={500}
-                value={priceRange[1]}
-                onChange={(e) =>
-                  setPriceRange([priceRange[0], Number(e.target.value)])
-                }
-                className="w-full accent-emerald-700"
-              />
-              <div className="flex justify-between text-xs text-[var(--muted)] mt-1">
-                <span>Rs. {priceRange[0].toLocaleString()}</span>
-                <span>Rs. {priceRange[1].toLocaleString()}</span>
-              </div>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as SortOption)}
+                className="w-full border border-[var(--line)] rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600"
+              >
+                <option value="default">Default</option>
+                <option value="price-low">Price: Low to High</option>
+                <option value="price-high">Price: High to Low</option>
+              </select>
             </div>
 
             {/* Room Type */}
-            <div className="min-w-[180px]">
+            <div className="min-w-[200px]">
               <label className="text-sm font-semibold text-[var(--text)] mb-2 block">
                 Room Type
               </label>
@@ -148,13 +150,29 @@ export default function RoomsPage() {
               </select>
             </div>
 
+            {/* Availability */}
+            <div className="min-w-[200px]">
+              <label className="text-sm font-semibold text-[var(--text)] mb-2 block">
+                Availability
+              </label>
+              <select
+                value={availability}
+                onChange={(e) => setAvailability(e.target.value)}
+                className="w-full border border-[var(--line)] rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600"
+              >
+                <option value="all">All Rooms</option>
+                <option value="available">Available Only</option>
+                <option value="booked">Booked Only</option>
+              </select>
+            </div>
+
             {/* Apply Button */}
             <button
               onClick={applyFilters}
-              className="bg-emerald-700 text-white px-6 py-2.5 rounded-full text-sm font-semibold flex items-center gap-2 hover:bg-emerald-800 transition-colors shrink-0 cursor-pointer"
+              className="group bg-emerald-700 text-white px-7 py-2.5 rounded-full text-sm font-semibold flex items-center gap-2 hover:bg-emerald-800 hover:shadow-lg hover:shadow-emerald-700/25 active:scale-[0.97] transition-all duration-300 cursor-pointer shrink-0"
             >
               <svg
-                className="w-4 h-4"
+                className="w-4 h-4 transition-transform duration-300 group-hover:rotate-12"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -182,6 +200,7 @@ export default function RoomsPage() {
                 price={parseFloat(room.price)}
                 description={room.description}
                 image={room.image}
+                isAvailable={room.is_available}
               />
             ))
           ) : (

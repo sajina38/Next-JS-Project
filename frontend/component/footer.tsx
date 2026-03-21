@@ -2,60 +2,81 @@ import Link from "next/link";
 
 export default function Footer() {
   return (
-    <footer className="bg-emerald-950 text-white py-10 px-5">
-      <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 text-sm">
-        {/* About */}
-        <div>
-          <h2 className="text-2xl font-semibold mb-3">About Us</h2>
-          <p className="leading-relaxed">
-            Urban Boutique Hotel is a modern city retreat in the heart of
-            Lakeside, Pokhara — blending contemporary elegance with warm Nepali
-            hospitality.
-          </p>
-        </div>
+    <footer>
+      <div className="bg-emerald-950 text-white pt-16 pb-10 px-5">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-12 text-sm">
+          {/* About */}
+          <div>
+            <h2 className="text-lg font-bold tracking-wider uppercase mb-6">
+              About
+            </h2>
+            <p className="text-gray-300 leading-relaxed">
+              Urban Boutique Hotel has perhaps the best location of its kind that
+              a hotel could have in any tourist area. Staying here, one can enjoy
+              the advantage of being out of the noise but within just few minutes
+              stroll from all the action.
+            </p>
+          </div>
 
-        {/* Terms and Policies */}
-        <div>
-          <h2 className="text-2xl font-semibold mb-3">Terms &amp; Policies</h2>
-          <ul className="space-y-2">
-            <li>
-              <Link href="#" className="hover:text-gray-300 transition-colors">
-                Terms of Use
+          {/* Quick Links */}
+          <div>
+            <h2 className="text-lg font-bold tracking-wider uppercase mb-6">
+              Quick Link
+            </h2>
+            <div className="grid grid-cols-2 gap-x-8 gap-y-3">
+              <Link
+                href="/"
+                className="text-gray-300 hover:text-white transition-colors"
+              >
+                Home
               </Link>
-            </li>
-            <li>
-              <Link href="#" className="hover:text-gray-300 transition-colors">
-                Privacy Policy
+              <Link
+                href="/rooms"
+                className="text-gray-300 hover:text-white transition-colors"
+              >
+                Rooms
               </Link>
-            </li>
-            <li>
-              <Link href="#" className="hover:text-gray-300 transition-colors">
-                Cancellation Policy
+              <Link
+                href="/about"
+                className="text-gray-300 hover:text-white transition-colors"
+              >
+                About Us
               </Link>
-            </li>
-          </ul>
-        </div>
+              <Link
+                href="/booking"
+                className="text-gray-300 hover:text-white transition-colors"
+              >
+                Booking
+              </Link>
+              <Link
+                href="/contact"
+                className="text-gray-300 hover:text-white transition-colors"
+              >
+                Contacts
+              </Link>
+            </div>
+          </div>
 
-        {/* Services */}
-        <div>
-          <h2 className="text-2xl font-semibold mb-3">Services</h2>
-          <p className="leading-relaxed">
-            Comfortable accommodations, fine dining, conference facilities,
-            airport transfers, and personalised concierge services for every
-            guest.
-          </p>
+          {/* Contact */}
+          <div>
+            <h2 className="text-lg font-bold tracking-wider uppercase mb-6">
+              Contact
+            </h2>
+            <ul className="space-y-3 text-gray-300">
+              <li>Lakeside, Pokhara - 6, Nepal</li>
+              <li>+977 61 457351</li>
+              <li>+977 61 457352</li>
+              <li>+977 9856025587</li>
+              <li>info@urbanboutiquehotel.com</li>
+            </ul>
+          </div>
         </div>
+      </div>
 
-        {/* Contact */}
-        <div>
-          <h2 className="text-2xl font-semibold mb-3">Contact</h2>
-          <p>Lakeside, Pokhara - 6, Nepal</p>
-          <p className="mt-1">Email: info@urbanboutiquehotel.com</p>
-          <p>Phone: +977-61-457351</p>
-          <p className="mt-3 text-gray-400 text-xs">
-            &copy; {new Date().getFullYear()} Urban Boutique Hotel. All Rights
-            Reserved.
-          </p>
+      {/* Copyright Bar */}
+      <div className="bg-emerald-950 border-t border-white/15 text-gray-400 text-xs px-5 py-4">
+        <div className="max-w-7xl mx-auto text-center">
+          <p>&copy; 2025 Urban Boutique Hotel. All rights reserved.</p>
         </div>
       </div>
     </footer>
