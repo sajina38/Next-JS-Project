@@ -26,3 +26,22 @@ class UserResponseSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ("id", "email", "role")
+
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = (
+            "id",
+            "username",
+            "email",
+            "first_name",
+            "last_name",
+            "phone_number",
+            "date_of_birth",
+            "country",
+            "gender",
+            "role",
+            "date_joined",
+        )
+        read_only_fields = ("id", "username", "role", "date_joined")

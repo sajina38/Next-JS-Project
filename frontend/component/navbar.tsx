@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 
@@ -63,6 +63,7 @@ const DEFAULT_HERO = {
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const hero = HERO_CONFIG[pathname] ?? DEFAULT_HERO;
@@ -70,10 +71,13 @@ export default function Navbar() {
     ? /^\/rooms\/[^/]+$/.test(pathname) && pathname !== "/rooms"
     : false;
 
+  useEffect(() => setMounted(true), []);
+
   const menuItems = [
     ...BASE_MENU_ITEMS,
-    ...(user
+    ...(mounted && user
       ? [
+          { label: "My Profile", href: "/profile" },
           ...(user.role === "manager"
             ? [{ label: "Manager Dashboard", href: "/manager/dashboard" }]
             : []),
@@ -81,10 +85,12 @@ export default function Navbar() {
             ? [{ label: "Admin Dashboard", href: "/admin/dashboard" }]
             : []),
         ]
-      : [
-          { label: "Login", href: "/login" },
-          { label: "Register", href: "/register" },
-        ]),
+      : mounted
+        ? [
+            { label: "Login", href: "/login" },
+            { label: "Register", href: "/register" },
+          ]
+        : []),
   ];
 
   return (
@@ -198,7 +204,7 @@ export default function Navbar() {
                   {item.label}
                 </Link>
               ))}
-              {user && (
+              {mounted && user && (
                 <button
                   onClick={() => {
                     setMenuOpen(false);

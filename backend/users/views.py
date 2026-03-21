@@ -5,7 +5,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
 
-from .serializers import UserRegisterSerializer, UserResponseSerializer
+from .serializers import UserRegisterSerializer, UserResponseSerializer, UserProfileSerializer
 from .permissions import IsManager, IsAdmin
 
 User = get_user_model()
@@ -41,7 +41,11 @@ class LoginView(APIView):
                     "refresh": str(tokens["refresh"]),
                     "user": {
                         "id": user.id,
+                        "username": user.username,
                         "email": user.email,
+                        "first_name": user.first_name,
+                        "last_name": user.last_name,
+                        "phone_number": user.phone_number,
                         "role": user.role,
                     },
                 },
@@ -65,6 +69,20 @@ class LogoutView(APIView):
                 {"detail": "Invalid or expired token."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+
+class ProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        serializer = UserProfileSerializer(request.user)
+        return Response(serializer.data)
+
+    def put(self, request):
+        serializer = UserProfileSerializer(request.user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
 
 
 class ManagerDashboardView(APIView):
