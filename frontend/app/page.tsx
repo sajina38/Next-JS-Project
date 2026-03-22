@@ -159,10 +159,10 @@ export default function Home() {
         </section>
 
         {/* Map Section */}
-        <section className="bg-emerald-200 flex justify-center p-6 md:p-10">
+        <section className="bg-stone-100 border-t border-stone-200/80 flex justify-center p-6 md:p-10">
           <iframe
             src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1425.6573922441455!2d83.95918756935161!3d28.216238793482756!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3995959ad546c07d%3A0x5a51a59576cc5374!2sUrban%20Boutique%20Hotel%20Pokhara!5e0!3m2!1sen!2snp!4v1759936990793!5m2!1sen!2snp"
-            className="w-full max-w-[700px] h-[300px] sm:h-[400px] rounded-lg shadow-md"
+            className="w-full max-w-[700px] h-[300px] sm:h-[400px] rounded-xl shadow-lg border border-stone-200/60 bg-white"
             allowFullScreen
             loading="lazy"
             referrerPolicy="no-referrer-when-downgrade"

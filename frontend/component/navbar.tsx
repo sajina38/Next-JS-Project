@@ -18,7 +18,8 @@ const HERO_CONFIG: Record<
   { image: string; title: string; description: string }
 > = {
   "/": {
-    image: "https://dynamic-media-cdn.tripadvisor.com/media/photo-o/2b/ec/47/a4/caption.jpg?w=1400&h=-1&s=1",
+    image:
+      "https://dynamic-media-cdn.tripadvisor.com/media/photo-o/2b/ec/47/a4/caption.jpg?w=1400&h=-1&s=1",
     title: "Welcome to Urban Boutique Hotel",
     description:
       "A modern haven, a crafted experience, a city retreat. Discover contemporary elegance blended with warm hospitality.",
@@ -102,7 +103,9 @@ export default function Navbar() {
             ? "absolute top-0 left-0 right-0 z-30 h-16"
             : "relative h-[400px] sm:h-[480px] md:h-[560px]"
         }`}
-        style={isRoomDetail ? undefined : { backgroundImage: `url('${hero.image}')` }}
+        style={
+          isRoomDetail ? undefined : { backgroundImage: `url('${hero.image}')` }
+        }
       >
         {!isRoomDetail && <div className="absolute inset-0 bg-black/50" />}
 
@@ -115,8 +118,18 @@ export default function Navbar() {
               className="p-2 -ml-2 rounded-lg text-white hover:text-white/90 hover:bg-white/10 transition-colors duration-300"
               aria-label="Open menu"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
               </svg>
             </button>
           </div>
@@ -140,8 +153,18 @@ export default function Navbar() {
               href="/rooms"
               className="px-6 py-2.5 text-xs font-medium tracking-[0.2em] uppercase text-white bg-emerald-700 rounded-full hover:bg-emerald-800 hover:shadow-lg hover:shadow-emerald-700/30 hover:scale-105 active:scale-[0.97] transition-all duration-300 inline-flex items-center gap-2.5"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.5}
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"
+                />
               </svg>
               Book Now
             </Link>
@@ -166,7 +189,9 @@ export default function Navbar() {
       {/* Sliding Side Menu */}
       <div
         className={`fixed inset-0 z-[60] transition-opacity duration-300 ${
-          menuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+          menuOpen
+            ? "opacity-100 pointer-events-auto"
+            : "opacity-0 pointer-events-none"
         }`}
       >
         <div
@@ -187,8 +212,18 @@ export default function Navbar() {
                 className="p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors duration-300"
                 aria-label="Close menu"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
             </div>

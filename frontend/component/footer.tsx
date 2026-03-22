@@ -11,10 +11,10 @@ export default function Footer() {
               About
             </h2>
             <p className="text-gray-300 leading-relaxed">
-              Urban Boutique Hotel has perhaps the best location of its kind that
-              a hotel could have in any tourist area. Staying here, one can enjoy
-              the advantage of being out of the noise but within just few minutes
-              stroll from all the action.
+              Urban Boutique Hotel has perhaps the best location of its kind
+              that a hotel could have in any tourist area. Staying here, one can
+              enjoy the advantage of being out of the noise but within just few
+              minutes stroll from all the action.
             </p>
           </div>
 
