@@ -1,0 +1,124 @@
+"use client";
+
+import Image from "next/image";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { useAuth } from "@/lib/auth";
+
+const NAV = [
+  { href: "/admin/dashboard", label: "Dashboard", icon: "grid" },
+  { href: "/admin/users", label: "Users", icon: "users" },
+  { href: "/admin/rooms", label: "Rooms", icon: "door" },
+] as const;
+
+function NavIcon({ name }: { name: (typeof NAV)[number]["icon"] }) {
+  const cls = "w-5 h-5";
+  if (name === "grid")
+    return (
+      <svg className={cls} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75A2.25 2.25 0 0 1 15.75 13.5H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25a2.25 2.25 0 0 1-2.25-2.25v-2.25ZM13.5 6A2.25 2.25 0 0 1 15.75 3.75H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 8.25 20.25H6a2.25 2.25 0 0 1-2.25-2.25v-2.25Z" />
+      </svg>
+    );
+  if (name === "users")
+    return (
+      <svg className={cls} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
+      </svg>
+    );
+  return (
+    <svg className={cls} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 21v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21m0 0h4.5M3.75 3.75h15M3.75 3.75v11.25c0 .621.504 1.125 1.125 1.125h14.25M3.75 3.75 3 3.75v-1.5a.75.75 0 0 1 .75-.75h16.5a.75.75 0 0 1 .75.75v1.5m-18 0h18" />
+    </svg>
+  );
+}
+
+export default function AdminShell({ children }: { children: React.ReactNode }) {
+  const { user, loading, logout } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  useEffect(() => {
+    if (loading) return;
+    if (!user) {
+      router.replace("/login");
+      return;
+    }
+    if (user.role !== "admin") {
+      router.replace("/");
+    }
+  }, [loading, user, router]);
+
+  if (loading || !user || user.role !== "admin") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-stone-100">
+        <div className="w-10 h-10 border-4 border-stone-200 border-t-emerald-700 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  const displayName =
+    user.first_name && user.last_name
+      ? `${user.first_name} ${user.last_name}`
+      : user.username;
+
+  return (
+    <div className="min-h-screen bg-stone-100 flex font-[var(--font-inter)]">
+      <aside className="w-64 shrink-0 bg-white border-r border-stone-200 flex flex-col sticky top-0 h-screen">
+        <div className="p-5 border-b border-stone-100">
+          <Link href="/admin/dashboard" className="flex items-center gap-3">
+            <Image src="/logo.png" alt="Urban Boutique Hotel" width={44} height={44} className="object-contain" />
+            <div>
+              <p className="text-sm font-bold text-stone-900 leading-tight">Urban Boutique Hotel</p>
+              
+            </div>
+          </Link>
+        </div>
+
+        <nav className="flex-1 p-3 space-y-0.5">
+          {NAV.map((item) => {
+            const active = pathname === item.href || pathname?.startsWith(item.href + "/");
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  active
+                    ? "bg-emerald-50 text-emerald-800"
+                    : "text-stone-600 hover:bg-stone-50 hover:text-stone-900"
+                }`}
+              >
+                <span className={active ? "text-emerald-700" : "text-stone-400"}>
+                  <NavIcon name={item.icon} />
+                </span>
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="p-4 border-t border-stone-100 space-y-3">
+          <div className="px-2">
+            <p className="text-sm font-semibold text-stone-900 truncate">{displayName}</p>
+            <p className="text-xs text-stone-500 truncate">{user.email}</p>
+            <span className="inline-block mt-1.5 text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800">
+              admin
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => logout()}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-stone-600 hover:bg-stone-50 hover:text-red-600 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
+            </svg>
+            Logout
+          </button>
+        </div>
+      </aside>
+
+      <main className="flex-1 overflow-auto min-h-screen">{children}</main>
+    </div>
+  );
+}

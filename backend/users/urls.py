@@ -10,5 +10,7 @@ urlpatterns = [
     path("auth/logout/", views.LogoutView.as_view(), name="logout"),
     path("auth/profile/", views.ProfileView.as_view(), name="profile"),
     path("manager/dashboard/", views.ManagerDashboardView.as_view(), name="manager-dashboard"),
+    path("admin/dashboard/", views.AdminDashboardView.as_view(), name="admin-dashboard"),
     path("admin/users/", views.AdminUsersView.as_view(), name="admin-users"),
+    path("admin/users/<int:pk>/", views.AdminUserDetailView.as_view(), name="admin-user-detail"),
 ]
