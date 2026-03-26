@@ -34,6 +34,15 @@ const BOOKING_STATUS: Record<string, string> = {
   pending: "bg-amber-50 text-amber-800",
   confirmed: "bg-emerald-50 text-emerald-800",
   cancelled: "bg-stone-100 text-stone-600",
+  "checked-in": "bg-sky-50 text-sky-800",
+  "checked-out": "bg-violet-50 text-violet-800",
+};
+
+const ROOM_STATUS_BADGE: Record<string, string> = {
+  available: "bg-emerald-50 text-emerald-800",
+  occupied: "bg-rose-50 text-rose-700",
+  cleaning: "bg-amber-50 text-amber-800",
+  maintenance: "bg-slate-100 text-slate-700",
 };
 
 export default function AdminDashboardPage() {
@@ -137,7 +146,7 @@ export default function AdminDashboardPage() {
                           BOOKING_STATUS[b.status] || "bg-stone-100 text-stone-600"
                         }`}
                       >
-                        {b.status}
+                        {b.status.replace(/-/g, " ")}
                       </span>
                     </li>
                   ))
@@ -163,13 +172,11 @@ export default function AdminDashboardPage() {
                         </p>
                       </div>
                       <span
-                        className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full ${
-                          r.status === "available"
-                            ? "bg-emerald-50 text-emerald-800"
-                            : "bg-rose-50 text-rose-700"
+                        className={`shrink-0 text-xs font-semibold capitalize px-2.5 py-1 rounded-full ${
+                          ROOM_STATUS_BADGE[r.status] || "bg-stone-100 text-stone-600"
                         }`}
                       >
-                        {r.status}
+                        {r.status.replace(/-/g, " ")}
                       </span>
                     </li>
                   ))

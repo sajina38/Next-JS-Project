@@ -4,7 +4,12 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 
 from .models import Booking
-from .serializers import BookingSerializer
+from .room_sync import (
+    recompute_room_status,
+    sync_room_after_booking_deleted,
+    sync_room_status_after_booking_save,
+)
+from .serializers import AdminBookingUpdateSerializer, BookingSerializer
 
 
 class BookingListCreateView(APIView):
@@ -22,11 +27,7 @@ class BookingListCreateView(APIView):
         serializer = BookingSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         booking = serializer.save(user=request.user)
-
-        room = booking.room
-        room.is_available = False
-        room.save(update_fields=["is_available"])
-
+        sync_room_status_after_booking_save(booking)
         return Response(BookingSerializer(booking).data, status=status.HTTP_201_CREATED)
 
 
@@ -62,31 +63,28 @@ class BookingDetailView(APIView):
         if not booking:
             return Response({"error": "Booking not found."}, status=status.HTTP_404_NOT_FOUND)
 
+        if request.user.role in ("admin", "manager"):
+            serializer = AdminBookingUpdateSerializer(booking, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            old_room = booking.room
+            serializer.save()
+            booking.refresh_from_db()
+            if old_room.pk != booking.room_id:
+                recompute_room_status(old_room)
+            sync_room_status_after_booking_save(booking)
+            return Response(BookingSerializer(booking).data)
+
         new_status = request.data.get("status")
         if not new_status:
             return Response({"error": "Status field is required."}, status=status.HTTP_400_BAD_REQUEST)
-
-        if request.user.role in ("admin", "manager"):
-            if new_status not in ("pending", "confirmed", "cancelled"):
-                return Response({"error": "Invalid status."}, status=status.HTTP_400_BAD_REQUEST)
-        else:
-            if new_status != "cancelled":
-                return Response(
-                    {"error": "You can only cancel your booking."},
-                    status=status.HTTP_403_FORBIDDEN,
-                )
-
+        if new_status != "cancelled":
+            return Response(
+                {"error": "You can only cancel your booking."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         booking.status = new_status
         booking.save(update_fields=["status"])
-
-        if new_status == "cancelled":
-            has_active = Booking.objects.filter(
-                room=booking.room, status__in=["pending", "confirmed"]
-            ).exclude(pk=booking.pk).exists()
-            if not has_active:
-                booking.room.is_available = True
-                booking.room.save(update_fields=["is_available"])
-
+        sync_room_status_after_booking_save(booking)
         return Response(BookingSerializer(booking).data)
 
     def delete(self, request, pk):
@@ -98,12 +96,5 @@ class BookingDetailView(APIView):
 
         room = booking.room
         booking.delete()
-
-        has_active = Booking.objects.filter(
-            room=room, status__in=["pending", "confirmed"]
-        ).exists()
-        if not has_active:
-            room.is_available = True
-            room.save(update_fields=["is_available"])
-
+        sync_room_after_booking_deleted(room)
         return Response(status=status.HTTP_204_NO_CONTENT)

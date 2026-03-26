@@ -150,7 +150,7 @@ class AdminDashboardView(APIView):
                 "room_type": r.room_type,
                 "name": r.name,
                 "price": str(r.price),
-                "status": "available" if r.is_available else "occupied",
+                "status": r.room_status,
             }
             for r in rooms_qs
         ]
@@ -166,6 +166,94 @@ class AdminDashboardView(APIView):
                 },
                 "recent_bookings": recent_bookings,
                 "rooms_status": rooms_status,
+            }
+        )
+
+
+class AdminReportsView(APIView):
+    """Simple analytics: current-month bookings/revenue, last-12-months chart."""
+
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def get(self, request):
+        import calendar
+        from datetime import datetime
+
+        from django.db.models import Count, Sum
+        from django.db.models.functions import TruncMonth
+        from django.utils import timezone
+
+        from bookings.models import Booking
+
+        now = timezone.localtime()
+        tz = timezone.get_current_timezone()
+        month_start = timezone.make_aware(
+            datetime(now.year, now.month, 1, 0, 0, 0),
+            tz,
+        )
+        if now.month == 12:
+            next_month_start_naive = datetime(now.year + 1, 1, 1, 0, 0, 0)
+        else:
+            next_month_start_naive = datetime(now.year, now.month + 1, 1, 0, 0, 0)
+        month_end_exclusive = timezone.make_aware(next_month_start_naive, tz)
+
+        month_qs = Booking.objects.filter(
+            created_at__gte=month_start,
+            created_at__lt=month_end_exclusive,
+        )
+        total_bookings = month_qs.count()
+        rev = month_qs.filter(
+            payment_status=Booking.PaymentStatus.PAID,
+        ).aggregate(s=Sum("total_amount"))["s"]
+        total_revenue = str(rev) if rev is not None else "0.00"
+        summary_month_label = f"{calendar.month_abbr[now.month]} {now.year}"
+        y, m = now.year, now.month
+        m -= 11
+        while m < 1:
+            m += 12
+            y -= 1
+
+        start_naive = datetime(y, m, 1, 0, 0, 0)
+        if timezone.is_naive(start_naive):
+            start_dt = timezone.make_aware(start_naive, timezone.get_current_timezone())
+        else:
+            start_dt = start_naive
+
+        rows = (
+            Booking.objects.filter(created_at__gte=start_dt)
+            .annotate(month=TruncMonth("created_at"))
+            .values("month")
+            .annotate(count=Count("id"))
+            .order_by("month")
+        )
+        row_map = {}
+        for r in rows:
+            mo = r["month"]
+            if mo is not None:
+                row_map[f"{mo.year}-{mo.month:02d}"] = r["count"]
+
+        monthly_bookings = []
+        cy, cm = y, m
+        for _ in range(12):
+            key = f"{cy}-{cm:02d}"
+            monthly_bookings.append(
+                {
+                    "key": key,
+                    "label": f"{calendar.month_abbr[cm]} {cy}",
+                    "count": row_map.get(key, 0),
+                }
+            )
+            cm += 1
+            if cm > 12:
+                cm = 1
+                cy += 1
+
+        return Response(
+            {
+                "total_bookings": total_bookings,
+                "total_revenue": total_revenue,
+                "summary_month_label": summary_month_label,
+                "monthly_bookings": monthly_bookings,
             }
         )
 

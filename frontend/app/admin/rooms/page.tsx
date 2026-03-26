@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import api from "@/lib/api";
 
+type RoomStatus = "available" | "occupied" | "cleaning" | "maintenance";
+
 interface AdminRoom {
   id: number;
   room_number: string;
@@ -11,16 +13,23 @@ interface AdminRoom {
   description: string;
   price: string;
   capacity: number;
-  is_available: boolean;
+  room_status: RoomStatus;
   image: string | null;
 }
+
+const STATUS_BADGE: Record<RoomStatus, string> = {
+  available: "bg-emerald-50 text-emerald-800 border border-emerald-100",
+  occupied: "bg-rose-50 text-rose-700 border border-rose-100",
+  cleaning: "bg-amber-50 text-amber-800 border border-amber-100",
+  maintenance: "bg-slate-100 text-slate-700 border border-slate-200",
+};
 
 export default function AdminRoomsPage() {
   const [rooms, setRooms] = useState<AdminRoom[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState({
     room_number: "",
@@ -29,9 +38,10 @@ export default function AdminRoomsPage() {
     description: "",
     price: "",
     capacity: "2",
-    is_available: true,
+    room_status: "available" as RoomStatus,
   });
   const [saving, setSaving] = useState(false);
+  const [patchingId, setPatchingId] = useState<number | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -53,8 +63,7 @@ export default function AdminRoomsPage() {
   const filtered = useMemo(() => {
     let list = rooms;
     if (typeFilter !== "all") list = list.filter((r) => r.room_type === typeFilter);
-    if (statusFilter === "available") list = list.filter((r) => r.is_available);
-    if (statusFilter === "occupied") list = list.filter((r) => !r.is_available);
+    if (statusFilter !== "all") list = list.filter((r) => r.room_status === statusFilter);
     const q = search.trim().toLowerCase();
     if (q) {
       list = list.filter(
@@ -66,6 +75,18 @@ export default function AdminRoomsPage() {
     }
     return list;
   }, [rooms, search, typeFilter, statusFilter]);
+
+  async function setRoomStatus(id: number, room_status: RoomStatus) {
+    setPatchingId(id);
+    try {
+      const { data } = await api.patch(`/admin/rooms/${id}/`, { room_status });
+      setRooms((prev) => prev.map((r) => (r.id === id ? { ...r, ...data } : r)));
+    } catch {
+      alert("Could not update room status.");
+    } finally {
+      setPatchingId(null);
+    }
+  }
 
   async function handleDelete(id: number) {
     if (!confirm("Delete this room? Linked bookings may be affected.")) return;
@@ -88,7 +109,7 @@ export default function AdminRoomsPage() {
         description: form.description.trim(),
         price: form.price,
         capacity: parseInt(form.capacity, 10) || 2,
-        is_available: form.is_available,
+        room_status: form.room_status,
       };
       const { data } = await api.post("/admin/rooms/", payload);
       setRooms((prev) => [...prev, data].sort((a, b) => a.room_number.localeCompare(b.room_number)));
@@ -100,7 +121,7 @@ export default function AdminRoomsPage() {
         description: "",
         price: "",
         capacity: "2",
-        is_available: true,
+        room_status: "available",
       });
     } catch {
       alert("Could not create room. Check room number is unique and price is valid.");
@@ -109,12 +130,38 @@ export default function AdminRoomsPage() {
     }
   }
 
+  function statusActions(r: AdminRoom) {
+    const busy = patchingId === r.id;
+    const btn =
+      "px-2 py-1 rounded-md text-xs font-medium transition-colors disabled:opacity-50 border border-stone-200";
+    const actions: { label: string; next: RoomStatus }[] = [];
+    if (r.room_status !== "cleaning") actions.push({ label: "Mark cleaning", next: "cleaning" });
+    if (r.room_status !== "available") actions.push({ label: "Mark available", next: "available" });
+    if (r.room_status !== "occupied") actions.push({ label: "Mark occupied", next: "occupied" });
+    if (r.room_status !== "maintenance") actions.push({ label: "Maintenance", next: "maintenance" });
+    return (
+      <div className="flex flex-wrap gap-1">
+        {actions.map((a) => (
+          <button
+            key={a.next}
+            type="button"
+            disabled={busy}
+            onClick={() => setRoomStatus(r.id, a.next)}
+            className={`${btn} text-stone-700 hover:bg-stone-50`}
+          >
+            {busy ? "…" : a.label}
+          </button>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 md:p-10 max-w-6xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-stone-900 tracking-tight">Rooms Management</h1>
-          <p className="text-stone-500 mt-1 text-sm">Manage all rooms in the system</p>
+          <p className="text-stone-500 mt-1 text-sm">Manage rooms and housekeeping status</p>
         </div>
         <button
           type="button"
@@ -156,11 +203,13 @@ export default function AdminRoomsPage() {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-4 py-2.5 rounded-lg border border-stone-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600 lg:w-44"
+          className="px-4 py-2.5 rounded-lg border border-stone-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600 lg:w-48"
         >
-          <option value="all">All Status</option>
+          <option value="all">All status</option>
           <option value="available">Available</option>
           <option value="occupied">Occupied</option>
+          <option value="cleaning">Cleaning</option>
+          <option value="maintenance">Maintenance</option>
         </select>
       </div>
 
@@ -174,19 +223,20 @@ export default function AdminRoomsPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm min-w-[720px]">
               <thead>
                 <tr className="border-b border-stone-100 text-left text-stone-500 text-xs uppercase tracking-wider">
                   <th className="px-5 py-3 font-semibold">Room</th>
                   <th className="px-5 py-3 font-semibold">Type</th>
                   <th className="px-5 py-3 font-semibold">Price</th>
                   <th className="px-5 py-3 font-semibold">Status</th>
-                  <th className="px-5 py-3 font-semibold w-24">Actions</th>
+                  <th className="px-5 py-3 font-semibold">Quick set</th>
+                  <th className="px-5 py-3 font-semibold w-16">Delete</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100">
                 {filtered.map((r) => (
-                  <tr key={r.id} className="hover:bg-stone-50/80">
+                  <tr key={r.id} className="hover:bg-stone-50/80 align-top">
                     <td className="px-5 py-3.5 font-medium text-stone-900">
                       {r.room_number}
                       {r.name && r.name !== r.room_type ? (
@@ -198,14 +248,13 @@ export default function AdminRoomsPage() {
                     <td className="px-5 py-3.5">
                       <span
                         className={`inline-block text-xs font-semibold px-2.5 py-1 rounded-md capitalize ${
-                          r.is_available
-                            ? "bg-emerald-50 text-emerald-800 border border-emerald-100"
-                            : "bg-rose-50 text-rose-700 border border-rose-100"
+                          STATUS_BADGE[r.room_status] || "bg-stone-100 text-stone-700"
                         }`}
                       >
-                        {r.is_available ? "available" : "occupied"}
+                        {r.room_status}
                       </span>
                     </td>
+                    <td className="px-5 py-3.5">{statusActions(r)}</td>
                     <td className="px-5 py-3.5">
                       <button
                         type="button"
@@ -276,15 +325,17 @@ export default function AdminRoomsPage() {
                 onChange={(e) => setForm({ ...form, capacity: e.target.value })}
                 className="w-full px-3 py-2 rounded-lg border border-stone-200 text-sm"
               />
-              <label className="flex items-center gap-2 text-sm text-stone-700">
-                <input
-                  type="checkbox"
-                  checked={form.is_available}
-                  onChange={(e) => setForm({ ...form, is_available: e.target.checked })}
-                  className="rounded border-stone-300 text-emerald-700 focus:ring-emerald-600"
-                />
-                Available for booking
-              </label>
+              <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wide">Initial status</label>
+              <select
+                value={form.room_status}
+                onChange={(e) => setForm({ ...form, room_status: e.target.value as RoomStatus })}
+                className="w-full px-3 py-2 rounded-lg border border-stone-200 text-sm"
+              >
+                <option value="available">Available</option>
+                <option value="cleaning">Cleaning</option>
+                <option value="maintenance">Maintenance</option>
+                <option value="occupied">Occupied</option>
+              </select>
               <div className="flex gap-2 pt-2">
                 <button
                   type="button"

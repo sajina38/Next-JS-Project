@@ -9,11 +9,17 @@ class Booking(models.Model):
         PENDING = "pending", "Pending"
         CONFIRMED = "confirmed", "Confirmed"
         CANCELLED = "cancelled", "Cancelled"
+        CHECKED_IN = "checked-in", "Checked in"
+        CHECKED_OUT = "checked-out", "Checked out"
 
     class PaymentMethod(models.TextChoices):
         PREPAY = "prepay", "Pre-payment (Bank Transfer)"
         PAY_AT_CHECKIN = "pay-at-checkin", "Pay at Check-in"
         BANK_CARD = "bank-card", "Bank Card on Arrival"
+
+    class PaymentStatus(models.TextChoices):
+        UNPAID = "unpaid", "Unpaid"
+        PAID = "paid", "Paid"
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -45,6 +51,12 @@ class Booking(models.Model):
         choices=PaymentMethod.choices,
         default=PaymentMethod.PAY_AT_CHECKIN,
     )
+    payment_status = models.CharField(
+        max_length=10,
+        choices=PaymentStatus.choices,
+        default=PaymentStatus.UNPAID,
+    )
+    total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     status = models.CharField(
         max_length=20,
         choices=Status.choices,
