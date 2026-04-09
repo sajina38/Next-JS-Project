@@ -38,6 +38,36 @@ interface AdminRoomOption {
   room_status: string;
 }
 
+interface CustomerOption {
+  id: number;
+  username: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+}
+
+const PAYMENT_METHOD_OPTIONS = [
+  { value: "pay-at-checkin", label: "Pay at check-in" },
+  { value: "prepay", label: "Pre-payment (bank transfer)" },
+  { value: "bank-card", label: "Bank card on arrival" },
+] as const;
+
+const emptyAddForm = {
+  user: "",
+  room: "",
+  check_in: "",
+  check_out: "",
+  guests: "1",
+  adults: "1",
+  children: "0",
+  guest_name: "",
+  guest_email: "",
+  guest_phone: "",
+  guest_country: "Nepal",
+  payment_method: "pay-at-checkin",
+  special_requests: "",
+};
+
 const STATUS_BADGE: Record<string, string> = {
   pending: "bg-amber-50 text-amber-800 border border-amber-100",
   confirmed: "bg-emerald-50 text-emerald-800 border border-emerald-100",
@@ -169,11 +199,24 @@ function formatApiError(err: unknown, fallback: string): string {
 export default function AdminBookingsPage() {
   const [bookings, setBookings] = useState<BookingRow[]>([]);
   const [rooms, setRooms] = useState<AdminRoomOption[]>([]);
+  const [customers, setCustomers] = useState<CustomerOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [modal, setModal] = useState<BookingRow | null>(null);
+  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [addForm, setAddForm] = useState({ ...emptyAddForm });
+  const [addingCustomer, setAddingCustomer] = useState(false);
+  const [addCustomerForm, setAddCustomerForm] = useState({
+    username: "",
+    email: "",
+    password: "",
+    first_name: "",
+    last_name: "",
+  });
+  const [creating, setCreating] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [creatingCustomer, setCreatingCustomer] = useState(false);
   const [applyingId, setApplyingId] = useState<number | null>(null);
 
   const load = useCallback(() => {
@@ -198,6 +241,113 @@ export default function AdminBookingsPage() {
       /* ignore */
     }
   }, []);
+
+  const loadCustomersForAdd = useCallback(async () => {
+    try {
+      const { data } = await api.get<CustomerOption[]>("/admin/booking-customers/");
+      setCustomers(data);
+    } catch {
+      setCustomers([]);
+    }
+  }, []);
+
+  const openAddBooking = useCallback(() => {
+    setAddForm({ ...emptyAddForm });
+    setAddingCustomer(false);
+    setAddCustomerForm({
+      username: "",
+      email: "",
+      password: "",
+      first_name: "",
+      last_name: "",
+    });
+    setAddModalOpen(true);
+    void loadCustomersForAdd();
+  }, [loadCustomersForAdd]);
+
+  async function handleCreateBooking(e: React.FormEvent) {
+    e.preventDefault();
+    const userId = parseInt(addForm.user, 10);
+    const roomId = parseInt(addForm.room, 10);
+    if (!userId || !roomId || !addForm.check_in || !addForm.check_out) {
+      alert("Select a customer, room, and dates.");
+      return;
+    }
+    setCreating(true);
+    try {
+      const { data } = await api.post<BookingRow>("/admin/bookings/create/", {
+        user: userId,
+        room: roomId,
+        check_in: addForm.check_in,
+        check_out: addForm.check_out,
+        guests: parseInt(addForm.guests, 10) || 1,
+        adults: parseInt(addForm.adults, 10) || 1,
+        children: parseInt(addForm.children, 10) || 0,
+        guest_name: addForm.guest_name.trim(),
+        guest_email: addForm.guest_email.trim(),
+        guest_phone: addForm.guest_phone.trim(),
+        guest_country: addForm.guest_country.trim() || "Nepal",
+        payment_method: addForm.payment_method,
+        special_requests: addForm.special_requests.trim(),
+      });
+      setBookings((prev) => [data, ...prev]);
+      setAddModalOpen(false);
+      setAddForm({ ...emptyAddForm });
+      setAddingCustomer(false);
+      setAddCustomerForm({
+        username: "",
+        email: "",
+        password: "",
+        first_name: "",
+        last_name: "",
+      });
+      void refreshRooms();
+    } catch (err) {
+      alert(formatApiError(err, "Could not create booking."));
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  async function handleCreateCustomer() {
+    const username = addCustomerForm.username.trim();
+    const email = addCustomerForm.email.trim();
+    const password = addCustomerForm.password;
+    if (!username || !email || !password) {
+      alert("Enter username, email, and password for the customer.");
+      return;
+    }
+
+    setCreatingCustomer(true);
+    try {
+      const { data } = await api.post("/admin/booking-customers/create/", {
+        username,
+        email,
+        password,
+        first_name: addCustomerForm.first_name.trim(),
+        last_name: addCustomerForm.last_name.trim(),
+      });
+
+      // Add the newly created customer to the dropdown and auto-select it.
+      setCustomers((prev) => {
+        const exists = prev.some((c) => c.id === data.id);
+        return exists ? prev : [...prev, data as CustomerOption].sort((a, b) => a.username.localeCompare(b.username));
+      });
+      setAddForm((f) => ({ ...f, user: String(data.id) }));
+      setAddingCustomer(false);
+      setAddCustomerForm({
+        username: "",
+        email: "",
+        password: "",
+        first_name: "",
+        last_name: "",
+      });
+    } catch (err) {
+      alert(formatApiError(err, "Could not create customer account."));
+    } finally {
+      setCreatingCustomer(false);
+    }
+  }
 
   const filtered = useMemo(() => {
     let list = bookings;
@@ -278,6 +428,16 @@ export default function AdminBookingsPage() {
   const roomChoicesForEdit = (b: BookingRow) =>
     rooms.filter((r) => r.room_status === "available" || r.id === b.room);
 
+  const availableRoomsForAdd = useMemo(
+    () => rooms.filter((r) => r.room_status === "available"),
+    [rooms]
+  );
+
+  function customerLabel(c: CustomerOption) {
+    const name = [c.first_name, c.last_name].filter(Boolean).join(" ").trim();
+    return name ? `${c.username} (${name})` : c.username;
+  }
+
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
@@ -285,6 +445,16 @@ export default function AdminBookingsPage() {
           <h1 className="text-2xl md:text-3xl font-bold text-stone-900 tracking-tight">Bookings</h1>
           <p className="text-stone-500 mt-1 text-sm">Manage reservations, check-in/out, and room assignment</p>
         </div>
+        <button
+          type="button"
+          onClick={openAddBooking}
+          className="inline-flex items-center justify-center gap-2 bg-stone-900 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-stone-800 transition-colors shrink-0"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+          </svg>
+          Add booking
+        </button>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-3 mb-6">
@@ -385,6 +555,292 @@ export default function AdminBookingsPage() {
           </div>
         )}
       </div>
+
+      {addModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 border border-stone-200 my-8 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-bold text-stone-900 mb-1">Add booking</h3>
+            <p className="text-sm text-stone-500 mb-4">
+              Create a reservation for a registered customer. Room must be available.
+            </p>
+            <form onSubmit={handleCreateBooking} className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wide">
+                  Customer account
+                </label>
+                {!addingCustomer ? (
+                  <button
+                    type="button"
+                    onClick={() => setAddingCustomer(true)}
+                    className="text-xs font-semibold text-emerald-700 hover:text-emerald-900 whitespace-nowrap"
+                  >
+                    + Add customer
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setAddingCustomer(false)}
+                    className="text-xs font-semibold text-stone-600 hover:text-stone-900 whitespace-nowrap"
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+
+              {!addingCustomer ? (
+                <>
+                  <select
+                    required
+                    value={addForm.user}
+                    onChange={(e) => setAddForm((f) => ({ ...f, user: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-lg border border-stone-200 text-sm"
+                  >
+                    <option value="">Select customer…</option>
+                    {customers.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {customerLabel(c)} — {c.email || "no email"}
+                      </option>
+                    ))}
+                  </select>
+                  {customers.length === 0 && (
+                    <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                      No customer accounts found. Add a new customer to continue.
+                    </p>
+                  )}
+                </>
+              ) : (
+                <div className="space-y-3">
+                  <input
+                    required
+                    placeholder="Username"
+                    value={addCustomerForm.username}
+                    onChange={(e) =>
+                      setAddCustomerForm((f) => ({ ...f, username: e.target.value }))
+                    }
+                    className="w-full px-3 py-2 rounded-lg border border-stone-200 text-sm"
+                  />
+                  <input
+                    required
+                    type="email"
+                    placeholder="Email"
+                    value={addCustomerForm.email}
+                    onChange={(e) =>
+                      setAddCustomerForm((f) => ({ ...f, email: e.target.value }))
+                    }
+                    className="w-full px-3 py-2 rounded-lg border border-stone-200 text-sm"
+                  />
+                  <input
+                    required
+                    type="password"
+                    placeholder="Password (min 6 chars)"
+                    value={addCustomerForm.password}
+                    onChange={(e) =>
+                      setAddCustomerForm((f) => ({ ...f, password: e.target.value }))
+                    }
+                    className="w-full px-3 py-2 rounded-lg border border-stone-200 text-sm"
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      placeholder="First name (optional)"
+                      value={addCustomerForm.first_name}
+                      onChange={(e) =>
+                        setAddCustomerForm((f) => ({
+                          ...f,
+                          first_name: e.target.value,
+                        }))
+                      }
+                      className="w-full px-3 py-2 rounded-lg border border-stone-200 text-sm"
+                    />
+                    <input
+                      placeholder="Last name (optional)"
+                      value={addCustomerForm.last_name}
+                      onChange={(e) =>
+                        setAddCustomerForm((f) => ({
+                          ...f,
+                          last_name: e.target.value,
+                        }))
+                      }
+                      className="w-full px-3 py-2 rounded-lg border border-stone-200 text-sm"
+                    />
+                  </div>
+
+                  <div className="flex gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setAddingCustomer(false)}
+                      className="flex-1 py-2 rounded-lg border border-stone-200 text-sm font-medium"
+                      disabled={creatingCustomer}
+                    >
+                      Back
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleCreateCustomer()}
+                      disabled={
+                        creatingCustomer ||
+                        !addCustomerForm.username.trim() ||
+                        !addCustomerForm.email.trim() ||
+                        !addCustomerForm.password
+                      }
+                      className="flex-1 py-2 rounded-lg bg-emerald-700 text-white text-sm font-semibold hover:bg-emerald-800 disabled:opacity-50"
+                    >
+                      {creatingCustomer ? "Creating…" : "Create customer"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wide">Room</label>
+              <select
+                required
+                value={addForm.room}
+                onChange={(e) => setAddForm((f) => ({ ...f, room: e.target.value }))}
+                className="w-full px-3 py-2 rounded-lg border border-stone-200 text-sm"
+              >
+                <option value="">Select available room…</option>
+                {availableRoomsForAdd.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.room_number} — {r.room_type}
+                  </option>
+                ))}
+              </select>
+              {availableRoomsForAdd.length === 0 && (
+                <p className="text-xs text-amber-700">No rooms are currently marked available.</p>
+              )}
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wide mb-1">
+                    Check-in
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={addForm.check_in}
+                    onChange={(e) => setAddForm((f) => ({ ...f, check_in: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-lg border border-stone-200 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wide mb-1">
+                    Check-out
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={addForm.check_out}
+                    onChange={(e) => setAddForm((f) => ({ ...f, check_out: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-lg border border-stone-200 text-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="block text-xs text-stone-600 mb-1">Guests</label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={addForm.guests}
+                    onChange={(e) => setAddForm((f) => ({ ...f, guests: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-lg border border-stone-200 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-stone-600 mb-1">Adults</label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={addForm.adults}
+                    onChange={(e) => setAddForm((f) => ({ ...f, adults: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-lg border border-stone-200 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-stone-600 mb-1">Children</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={addForm.children}
+                    onChange={(e) => setAddForm((f) => ({ ...f, children: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-lg border border-stone-200 text-sm"
+                  />
+                </div>
+              </div>
+
+              <input
+                placeholder="Guest name (on reservation)"
+                value={addForm.guest_name}
+                onChange={(e) => setAddForm((f) => ({ ...f, guest_name: e.target.value }))}
+                className="w-full px-3 py-2 rounded-lg border border-stone-200 text-sm"
+              />
+              <input
+                type="email"
+                placeholder="Guest email"
+                value={addForm.guest_email}
+                onChange={(e) => setAddForm((f) => ({ ...f, guest_email: e.target.value }))}
+                className="w-full px-3 py-2 rounded-lg border border-stone-200 text-sm"
+              />
+              <input
+                placeholder="Guest phone"
+                value={addForm.guest_phone}
+                onChange={(e) => setAddForm((f) => ({ ...f, guest_phone: e.target.value }))}
+                className="w-full px-3 py-2 rounded-lg border border-stone-200 text-sm"
+              />
+              <input
+                placeholder="Country"
+                value={addForm.guest_country}
+                onChange={(e) => setAddForm((f) => ({ ...f, guest_country: e.target.value }))}
+                className="w-full px-3 py-2 rounded-lg border border-stone-200 text-sm"
+              />
+
+              <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wide">Payment method</label>
+              <select
+                value={addForm.payment_method}
+                onChange={(e) => setAddForm((f) => ({ ...f, payment_method: e.target.value }))}
+                className="w-full px-3 py-2 rounded-lg border border-stone-200 text-sm"
+              >
+                {PAYMENT_METHOD_OPTIONS.map((p) => (
+                  <option key={p.value} value={p.value}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+
+              <textarea
+                placeholder="Special requests (optional)"
+                rows={2}
+                value={addForm.special_requests}
+                onChange={(e) => setAddForm((f) => ({ ...f, special_requests: e.target.value }))}
+                className="w-full px-3 py-2 rounded-lg border border-stone-200 text-sm resize-y"
+              />
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setAddModalOpen(false)}
+                  className="flex-1 py-2 rounded-lg border border-stone-200 text-sm font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={
+                    creating ||
+                    !addForm.user ||
+                    availableRoomsForAdd.length === 0 ||
+                    !addForm.check_in ||
+                    !addForm.check_out
+                  }
+                  className="flex-1 py-2 rounded-lg bg-emerald-700 text-white text-sm font-semibold hover:bg-emerald-800 disabled:opacity-50"
+                >
+                  {creating ? "Creating…" : "Create booking"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {modal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 overflow-y-auto">

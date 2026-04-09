@@ -7,6 +7,14 @@ class RoomSerializer(serializers.ModelSerializer):
     image = serializers.SerializerMethodField()
     is_available = serializers.BooleanField(read_only=True)
 
+    def validate_room_number(self, value):
+        s = (value or "").strip()
+        if not s.isdigit() or not (1 <= len(s) <= 10):
+            raise serializers.ValidationError(
+                "Room number must be numeric only (e.g. 101, 205)."
+            )
+        return s
+
     class Meta:
         model = Room
         fields = [

@@ -1,4 +1,10 @@
+from django.core.validators import RegexValidator
 from django.db import models
+
+ROOM_NUMBER_VALIDATOR = RegexValidator(
+    regex=r"^\d{1,10}$",
+    message="Room number must be numeric only (e.g. 101, 205).",
+)
 
 
 class HotelSettings(models.Model):
@@ -46,7 +52,11 @@ class Room(models.Model):
         CLEANING = "cleaning", "Cleaning"
         MAINTENANCE = "maintenance", "Maintenance"
 
-    room_number = models.CharField(max_length=10, unique=True)
+    room_number = models.CharField(
+        max_length=10,
+        unique=True,
+        validators=[ROOM_NUMBER_VALIDATOR],
+    )
     room_type = models.CharField(max_length=50)
     name = models.CharField(max_length=100, default="")
     description = models.TextField(blank=True, default="")

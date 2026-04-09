@@ -1,10 +1,13 @@
 from datetime import date
 
+from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from rooms.models import Room
 
 from .models import Booking
+
+User = get_user_model()
 
 
 class BookingSerializer(serializers.ModelSerializer):
@@ -143,3 +146,100 @@ class AdminBookingUpdateSerializer(serializers.ModelSerializer):
                 {"guests": f"This room supports a maximum of {room.capacity} guests."}
             )
         return data
+
+
+class StaffBookingCreateSerializer(serializers.ModelSerializer):
+    """Admin/manager: create a booking for a customer account (walk-in / phone booking)."""
+
+    class Meta:
+        model = Booking
+        fields = (
+            "user",
+            "room",
+            "check_in",
+            "check_out",
+            "guests",
+            "adults",
+            "children",
+            "guest_name",
+            "guest_email",
+            "guest_phone",
+            "guest_country",
+            "payment_method",
+            "special_requests",
+        )
+
+    def validate_user(self, user):
+        if user.role != User.Role.CUSTOMER:
+            raise serializers.ValidationError("Select a customer account.")
+        if not user.is_active:
+            raise serializers.ValidationError("This account is inactive.")
+        return user
+
+    def validate(self, data):
+        check_in = data.get("check_in")
+        check_out = data.get("check_out")
+        if check_in and check_out and check_out <= check_in:
+            raise serializers.ValidationError(
+                {"check_out": "Check-out must be after check-in."}
+            )
+        room = data.get("room")
+        guests = data.get("guests", 1)
+        if room:
+            if room.room_status != Room.RoomStatus.AVAILABLE:
+                raise serializers.ValidationError(
+                    {"room": "This room is not available for new bookings."}
+                )
+            if guests and guests > room.capacity:
+                raise serializers.ValidationError(
+                    {"guests": f"This room supports a maximum of {room.capacity} guests."}
+                )
+        return data
+
+    def create(self, validated_data):
+        booking = Booking.objects.create(**validated_data, status=Booking.Status.PENDING)
+        nights = (booking.check_out - booking.check_in).days
+        nights = max(nights, 1)
+        booking.total_amount = booking.room.price * nights
+        booking.save(update_fields=["total_amount"])
+        return booking
+
+
+class StaffCustomerCreateSerializer(serializers.ModelSerializer):
+    """Admin/manager: create a new customer account while making a booking."""
+
+    password = serializers.CharField(write_only=True, min_length=6)
+
+    class Meta:
+        model = User
+        fields = (
+            "id",
+            "username",
+            "email",
+            "first_name",
+            "last_name",
+            "password",
+        )
+
+    def validate(self, data):
+        # Keep it simple for FYP: username + email + password are required.
+        email = (data.get("email") or "").strip()
+        username = (data.get("username") or "").strip()
+        if not email:
+            raise serializers.ValidationError({"email": "Email is required."})
+        if not username:
+            raise serializers.ValidationError({"username": "Username is required."})
+        return data
+
+    def create(self, validated_data):
+        password = validated_data.pop("password")
+        user = User.objects.create_user(
+            username=validated_data["username"],
+            email=validated_data["email"],
+            password=password,
+            first_name=validated_data.get("first_name", ""),
+            last_name=validated_data.get("last_name", ""),
+        )
+        user.role = User.Role.CUSTOMER
+        user.save(update_fields=["role"])
+        return user

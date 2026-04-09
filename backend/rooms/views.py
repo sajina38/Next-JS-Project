@@ -5,14 +5,14 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from users.permissions import IsAdmin
+from users.permissions import IsAdminOrManager
 
 from .models import HotelSettings, Room
 from .serializers import HotelSettingsSerializer, RoomSerializer
 
 
 class AdminHotelSettingsView(APIView):
-    permission_classes = [IsAuthenticated, IsAdmin]
+    permission_classes = [IsAuthenticated, IsAdminOrManager]
 
     def get(self, request):
         serializer = HotelSettingsSerializer(HotelSettings.load())
@@ -27,7 +27,7 @@ class AdminHotelSettingsView(APIView):
 
 
 class AdminRoomListCreateView(APIView):
-    permission_classes = [IsAuthenticated, IsAdmin]
+    permission_classes = [IsAuthenticated, IsAdminOrManager]
 
     def get(self, request):
         rooms = Room.objects.all().order_by("room_number")
@@ -45,7 +45,7 @@ class AdminRoomListCreateView(APIView):
 
 
 class AdminRoomDetailView(APIView):
-    permission_classes = [IsAuthenticated, IsAdmin]
+    permission_classes = [IsAuthenticated, IsAdminOrManager]
 
     def patch(self, request, pk):
         room = get_object_or_404(Room, pk=pk)

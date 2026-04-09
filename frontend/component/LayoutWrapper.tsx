@@ -13,12 +13,13 @@ export default function LayoutWrapper({
   const isAuthPage = pathname ? (pathname === "/login" || pathname === "/register") : false;
   const isProfilePage = pathname === "/profile";
   const isAdminPage = pathname ? pathname.startsWith("/admin") : false;
+  const isManagerPage = pathname ? pathname.startsWith("/manager") : false;
 
   return (
     <>
-      {!isAuthPage && !isProfilePage && !isAdminPage && <Navbar />}
+      {!isAuthPage && !isProfilePage && !isAdminPage && !isManagerPage && <Navbar />}
       {children}
-      {!isAuthPage && !isProfilePage && !isAdminPage && <Footer />}
+      {!isAuthPage && !isProfilePage && !isAdminPage && !isManagerPage && <Footer />}
     </>
   );
 }

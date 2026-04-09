@@ -41,7 +41,10 @@ export default function AdminRoomsPage() {
     room_status: "available" as RoomStatus,
   });
   const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   const [patchingId, setPatchingId] = useState<number | null>(null);
+
+  const ROOM_NUMBER_PATTERN = /^\d{1,10}$/;
 
   const load = useCallback(() => {
     setLoading(true);
@@ -100,10 +103,16 @@ export default function AdminRoomsPage() {
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
+    setFormError(null);
+    const num = form.room_number.trim();
+    if (!ROOM_NUMBER_PATTERN.test(num)) {
+      setFormError("Room number must be digits only (e.g. 101), 1–10 characters.");
+      return;
+    }
     setSaving(true);
     try {
       const payload = {
-        room_number: form.room_number.trim(),
+        room_number: num,
         room_type: form.room_type.trim(),
         name: form.name.trim() || form.room_type.trim(),
         description: form.description.trim(),
@@ -123,8 +132,15 @@ export default function AdminRoomsPage() {
         capacity: "2",
         room_status: "available",
       });
-    } catch {
-      alert("Could not create room. Check room number is unique and price is valid.");
+    } catch (err: unknown) {
+      const ax = err as { response?: { data?: Record<string, string | string[]> } };
+      const d = ax.response?.data;
+      const rn = d?.room_number;
+      const msg = Array.isArray(rn) ? rn[0] : typeof rn === "string" ? rn : null;
+      alert(
+        msg ||
+          "Could not create room. Check the room number is unique and the price is valid."
+      );
     } finally {
       setSaving(false);
     }
@@ -165,7 +181,10 @@ export default function AdminRoomsPage() {
         </div>
         <button
           type="button"
-          onClick={() => setModal(true)}
+          onClick={() => {
+            setFormError(null);
+            setModal(true);
+          }}
           className="inline-flex items-center justify-center gap-2 bg-stone-900 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-stone-800 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -280,13 +299,25 @@ export default function AdminRoomsPage() {
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 border border-stone-200 my-8">
             <h3 className="text-lg font-bold text-stone-900 mb-4">Add Room</h3>
             <form onSubmit={handleCreate} className="space-y-3">
-              <input
-                required
-                placeholder="Room number (e.g. 105)"
-                value={form.room_number}
-                onChange={(e) => setForm({ ...form, room_number: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg border border-stone-200 text-sm"
-              />
+              <div>
+                <input
+                  required
+                  inputMode="numeric"
+                  pattern="[0-9]{1,10}"
+                  title="Digits only, e.g. 101"
+                  placeholder="Room number (e.g. 105)"
+                  value={form.room_number}
+                  onChange={(e) => {
+                    setFormError(null);
+                    setForm({ ...form, room_number: e.target.value });
+                  }}
+                  className={`w-full px-3 py-2 rounded-lg border text-sm ${
+                    formError ? "border-rose-400 focus:ring-rose-200" : "border-stone-200"
+                  }`}
+                />
+                {formError && <p className="text-xs text-rose-600 mt-1">{formError}</p>}
+                <p className="text-xs text-stone-500 mt-1">Use numbers only (no letters).</p>
+              </div>
               <input
                 required
                 placeholder="Room type (e.g. Deluxe)"
@@ -339,7 +370,10 @@ export default function AdminRoomsPage() {
               <div className="flex gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setModal(false)}
+                  onClick={() => {
+                    setFormError(null);
+                    setModal(false);
+                  }}
                   className="flex-1 py-2 rounded-lg border border-stone-200 text-sm font-medium"
                 >
                   Cancel

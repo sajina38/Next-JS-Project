@@ -1,7 +1,10 @@
+from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+
+from users.permissions import IsAdminOrManager
 
 from .models import Booking
 from .room_sync import (
@@ -9,7 +12,63 @@ from .room_sync import (
     sync_room_after_booking_deleted,
     sync_room_status_after_booking_save,
 )
-from .serializers import AdminBookingUpdateSerializer, BookingSerializer
+from .serializers import (
+    AdminBookingUpdateSerializer,
+    BookingSerializer,
+    StaffBookingCreateSerializer,
+    StaffCustomerCreateSerializer,
+)
+
+User = get_user_model()
+
+
+class StaffCustomerListView(APIView):
+    """Minimal customer list for staff booking form (no full user management)."""
+
+    permission_classes = [IsAuthenticated, IsAdminOrManager]
+
+    def get(self, request):
+        rows = (
+            User.objects.filter(role=User.Role.CUSTOMER, is_active=True)
+            .order_by("username")
+            .values("id", "username", "email", "first_name", "last_name")
+        )
+        return Response(list(rows))
+
+
+class StaffCustomerCreateView(APIView):
+    """Admin/manager: create a customer account from the bookings screen."""
+
+    permission_classes = [IsAuthenticated, IsAdminOrManager]
+
+    def post(self, request):
+        serializer = StaffCustomerCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return Response(
+            {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class StaffBookingCreateView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminOrManager]
+
+    def post(self, request):
+        serializer = StaffBookingCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        booking = serializer.save()
+        sync_room_status_after_booking_save(booking)
+        return Response(
+            BookingSerializer(booking).data,
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class BookingListCreateView(APIView):
