@@ -22,12 +22,59 @@ const COUNTRIES = [
   "Indonesia", "Philippines", "Vietnam", "Other",
 ];
 
-type PaymentOption = "prepay" | "pay-at-checkin" | "bank-card";
+type PaymentOption = "pay-at-checkin" | "khalti";
+
+/** Same markup as <Suspense> fallback — avoids Next.js hydration mismatch (searchParams + auth). */
+function FullPageSpinner() {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="w-10 h-10 border-4 border-gray-200 border-t-emerald-700 rounded-full animate-spin" />
+    </div>
+  );
+}
+
+function formatBookingError(err: unknown): string {
+  const ax = err as { response?: { data?: unknown }; message?: string };
+  const data = ax.response?.data;
+  if (data === undefined || data === null) {
+    return ax.message || "Booking failed. Please try again.";
+  }
+  if (typeof data === "string") return data;
+  if (typeof data !== "object") return "Booking failed. Please try again.";
+
+  const o = data as Record<string, unknown>;
+  if (typeof o.error === "string") return o.error;
+
+  const detail = o.detail;
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    const parts = detail.map((item) =>
+      typeof item === "string" ? item : JSON.stringify(item),
+    );
+    const joined = parts.join(" ").trim();
+    if (joined) return joined;
+  }
+
+  const fieldMsgs: string[] = [];
+  for (const [key, val] of Object.entries(o)) {
+    if (key === "error" || key === "detail") continue;
+    if (typeof val === "string") fieldMsgs.push(`${key}: ${val}`);
+    else if (Array.isArray(val) && val.length) fieldMsgs.push(`${key}: ${val.map(String).join(", ")}`);
+  }
+  if (fieldMsgs.length) return fieldMsgs.join(" ");
+
+  return "Booking failed. Please try again.";
+}
 
 function ConfirmBookingContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const [clientReady, setClientReady] = useState(false);
+
+  useEffect(() => {
+    setClientReady(true);
+  }, []);
 
   const roomId = searchParams.get("room");
   const checkIn = searchParams.get("check_in") || "";
@@ -163,12 +210,21 @@ function ConfirmBookingContent() {
         formData.append("id_photo", idPhoto);
       }
 
-      await api.post("/bookings/", formData, {
+      const { data: booking } = await api.post("/bookings/", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
+
+      if (paymentOption === "khalti") {
+        const { data: khalti } = await api.post("/payments/khalti/initiate/", {
+          booking_id: booking.id,
+        });
+        window.location.href = khalti.payment_url;
+        return;
+      }
+
       setSuccess(true);
-    } catch {
-      setError("Booking failed. Please try again.");
+    } catch (err: unknown) {
+      setError(formatBookingError(err));
     } finally {
       setSubmitting(false);
     }
@@ -179,12 +235,8 @@ function ConfirmBookingContent() {
   const labelClass =
     "block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5";
 
-  if (authLoading || !user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-10 h-10 border-4 border-gray-200 border-t-emerald-700 rounded-full animate-spin" />
-      </div>
-    );
+  if (!clientReady || authLoading || !user) {
+    return <FullPageSpinner />;
   }
 
   if (!roomId || (!loading && !room)) {
@@ -434,30 +486,6 @@ function ConfirmBookingContent() {
               <p className="text-gray-500 text-sm mb-5">Choose how you&apos;d like to pay for your stay.</p>
 
               <div className="space-y-3">
-                {/* Option A: Prepayment */}
-                <label
-                  className={`flex items-start gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                    paymentOption === "prepay"
-                      ? "border-emerald-600 bg-emerald-50"
-                      : "border-gray-200 hover:border-gray-300"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="payment"
-                    checked={paymentOption === "prepay"}
-                    onChange={() => setPaymentOption("prepay")}
-                    className="mt-0.5 accent-emerald-700"
-                  />
-                  <div>
-                    <p className="font-semibold text-gray-900 text-sm">Pre-payment (Bank Transfer)</p>
-                    <p className="text-gray-500 text-xs mt-1">
-                      Pay the full amount via bank transfer before your arrival. Booking is confirmed once payment is verified.
-                    </p>
-                  </div>
-                </label>
-
-                {/* Option B: Pay at Check-in */}
                 <label
                   className={`flex items-start gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all ${
                     paymentOption === "pay-at-checkin"
@@ -473,17 +501,16 @@ function ConfirmBookingContent() {
                     className="mt-0.5 accent-emerald-700"
                   />
                   <div>
-                    <p className="font-semibold text-gray-900 text-sm">No Pre-payment — Pay at Check-in</p>
+                    <p className="font-semibold text-gray-900 text-sm">Pay at check-in</p>
                     <p className="text-gray-500 text-xs mt-1">
-                      Pay the full amount at the front desk when you arrive. No advance payment required.
+                      Settle the full balance at the front desk when you arrive. No advance payment is required.
                     </p>
                   </div>
                 </label>
 
-                {/* Option C: Bank Card */}
                 <label
                   className={`flex items-start gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                    paymentOption === "bank-card"
+                    paymentOption === "khalti"
                       ? "border-emerald-600 bg-emerald-50"
                       : "border-gray-200 hover:border-gray-300"
                   }`}
@@ -491,14 +518,15 @@ function ConfirmBookingContent() {
                   <input
                     type="radio"
                     name="payment"
-                    checked={paymentOption === "bank-card"}
-                    onChange={() => setPaymentOption("bank-card")}
+                    checked={paymentOption === "khalti"}
+                    onChange={() => setPaymentOption("khalti")}
                     className="mt-0.5 accent-emerald-700"
                   />
                   <div>
-                    <p className="font-semibold text-gray-900 text-sm">No Pre-payment — Bank Card on Arrival</p>
+                    <p className="font-semibold text-gray-900 text-sm">Pay online with Khalti</p>
                     <p className="text-gray-500 text-xs mt-1">
-                      Provide your bank card at the front desk upon check-in. The card will be charged during your stay.
+                      Complete your payment securely through Khalti before arrival. You will be redirected to their
+                      checkout to confirm the transaction, then returned to our site.
                     </p>
                   </div>
                 </label>
@@ -591,11 +619,9 @@ function ConfirmBookingContent() {
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    {paymentOption === "prepay"
-                      ? "Pre-payment via bank transfer"
-                      : paymentOption === "pay-at-checkin"
-                        ? "Payment at check-in"
-                        : "Bank card on arrival"}
+                    {paymentOption === "pay-at-checkin"
+                      ? "Payment at check-in"
+                      : "Online payment via Khalti"}
                   </p>
                 </div>
               </div>
@@ -609,13 +635,7 @@ function ConfirmBookingContent() {
 
 export default function ConfirmBookingPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="w-10 h-10 border-4 border-gray-200 border-t-emerald-700 rounded-full animate-spin" />
-        </div>
-      }
-    >
+    <Suspense fallback={<FullPageSpinner />}>
       <ConfirmBookingContent />
     </Suspense>
   );

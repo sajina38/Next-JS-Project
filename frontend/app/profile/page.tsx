@@ -54,6 +54,7 @@ const PAYMENT_LABELS: Record<string, string> = {
   prepay: "Pre-payment (Bank Transfer)",
   "pay-at-checkin": "Pay at Check-in",
   "bank-card": "Bank Card on Arrival",
+  khalti: "Online payment (Khalti)",
 };
 
 type Tab = "personal" | "security" | "bookings";

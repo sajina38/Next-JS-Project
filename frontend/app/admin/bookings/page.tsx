@@ -50,6 +50,7 @@ const PAYMENT_METHOD_OPTIONS = [
   { value: "pay-at-checkin", label: "Pay at check-in" },
   { value: "prepay", label: "Pre-payment (bank transfer)" },
   { value: "bank-card", label: "Bank card on arrival" },
+  { value: "khalti", label: "Online payment (Khalti)" },
 ] as const;
 
 const emptyAddForm = {

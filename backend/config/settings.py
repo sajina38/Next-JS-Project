@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -45,6 +46,7 @@ INSTALLED_APPS = [
     'users',
     'rooms',
     'bookings',
+    'payments',
 ]
 
 MIDDLEWARE = [
@@ -142,6 +144,14 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Khalti ePayment (use sandbox keys from https://test-admin.khalti.com — Settings)
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000').rstrip('/')
+KHALTI_SECRET_KEY = os.environ.get('KHALTI_SECRET_KEY', '')
+# Sandbox API base (switch to https://khalti.com/api/v2 for production)
+KHALTI_API_URL = os.environ.get('KHALTI_API_URL', 'https://dev.khalti.com/api/v2').rstrip('/')
+# Optional: exposed to the browser for docs / future client SDK use (web redirect flow does not need it)
+KHALTI_PUBLIC_KEY = os.environ.get('KHALTI_PUBLIC_KEY', '')
 
 from datetime import timedelta
 

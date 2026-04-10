@@ -16,6 +16,7 @@ class Booking(models.Model):
         PREPAY = "prepay", "Pre-payment (Bank Transfer)"
         PAY_AT_CHECKIN = "pay-at-checkin", "Pay at Check-in"
         BANK_CARD = "bank-card", "Bank Card on Arrival"
+        KHALTI = "khalti", "Khalti (online — sandbox / test)"
 
     class PaymentStatus(models.TextChoices):
         UNPAID = "unpaid", "Unpaid"

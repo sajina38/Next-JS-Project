@@ -20,6 +20,7 @@ const METHOD_LABELS: Record<string, string> = {
   prepay: "Pre-payment (bank transfer)",
   "pay-at-checkin": "Pay at check-in",
   "bank-card": "Card on arrival",
+  khalti: "Online payment (Khalti)",
 };
 
 const METHOD_OPTIONS = Object.entries(METHOD_LABELS).map(([value, label]) => ({ value, label }));
