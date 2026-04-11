@@ -2,7 +2,11 @@ from django.contrib import admin
 from django.utils.html import format_html
 
 from .models import Booking
-from .room_sync import recompute_room_status, sync_room_status_after_booking_save
+from .room_sync import (
+    recompute_room_status,
+    refresh_bookings_past_checkout,
+    sync_room_status_after_booking_save,
+)
 
 
 @admin.register(Booking)
@@ -58,6 +62,10 @@ class BookingAdmin(admin.ModelAdmin):
         return "No ID uploaded"
 
     id_photo_preview.short_description = "ID Photo Preview"
+
+    def changelist_view(self, request, extra_context=None):
+        refresh_bookings_past_checkout()
+        return super().changelist_view(request, extra_context=extra_context)
 
     def save_model(self, request, obj, form, change):
         old_room_pk = None

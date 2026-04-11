@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import { motion } from "motion/react";
 
 export default function ContactForm() {
   const [formData, setFormData] = useState({
@@ -36,7 +37,13 @@ export default function ContactForm() {
       <section className="max-w-7xl mx-auto px-6 py-16 md:py-24">
         <div className="grid md:grid-cols-2 gap-16 lg:gap-24">
           {/* Left — Contact Details */}
-          <div className="space-y-10">
+          <motion.div
+            className="space-y-10"
+            initial={{ opacity: 0, x: -24 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, margin: "-40px" }}
+            transition={{ duration: 0.55 }}
+          >
             {/* Hotel */}
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700 mb-3">
@@ -130,10 +137,15 @@ export default function ContactForm() {
                 ))}
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Right — Form */}
-          <div>
+          <motion.div
+            initial={{ opacity: 0, x: 24 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, margin: "-40px" }}
+            transition={{ duration: 0.55, delay: 0.06 }}
+          >
             <h2 className="text-2xl sm:text-3xl md:text-[2rem] font-bold text-gray-900 leading-snug mb-10 font-[var(--font-heading)]">
               Reach out to us with your inquiries or booking needs, we&apos;re
               happy to help in any way we can.
@@ -213,13 +225,19 @@ export default function ContactForm() {
                 Submit Form
               </button>
             </form>
-          </div>
+          </motion.div>
         </div>
       </section>
 
       {/* Map Section */}
       <section className="bg-gray-100 p-6 md:p-10">
-        <div className="max-w-7xl mx-auto">
+        <motion.div
+          className="max-w-7xl mx-auto"
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-40px" }}
+          transition={{ duration: 0.55 }}
+        >
           <iframe
             src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1425.6573922441455!2d83.95918756935161!3d28.216238793482756!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3995959ad546c07d%3A0x5a51a59576cc5374!2sUrban%20Boutique%20Hotel%20Pokhara!5e0!3m2!1sen!2snp!4v1759936990793!5m2!1sen!2snp"
             className="w-full h-[350px] sm:h-[450px] rounded-2xl shadow-md"
@@ -227,7 +245,7 @@ export default function ContactForm() {
             loading="lazy"
             referrerPolicy="no-referrer-when-downgrade"
           />
-        </div>
+        </motion.div>
       </section>
     </div>
   );

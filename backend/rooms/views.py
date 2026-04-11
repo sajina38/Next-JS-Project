@@ -30,6 +30,9 @@ class AdminRoomListCreateView(APIView):
     permission_classes = [IsAuthenticated, IsAdminOrManager]
 
     def get(self, request):
+        from bookings.room_sync import refresh_bookings_past_checkout
+
+        refresh_bookings_past_checkout()
         rooms = Room.objects.all().order_by("room_number")
         serializer = RoomSerializer(rooms, many=True, context={"request": request})
         return Response(serializer.data)
@@ -49,20 +52,14 @@ class AdminRoomDetailView(APIView):
 
     def patch(self, request, pk):
         room = get_object_or_404(Room, pk=pk)
-        new_status = request.data.get("room_status")
-        if new_status is None:
-            return Response(
-                {"error": "room_status is required."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        valid = {c.value for c in Room.RoomStatus}
-        if new_status not in valid:
-            return Response(
-                {"error": "Invalid room_status."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        room.room_status = new_status
-        room.save(update_fields=["room_status"])
+        serializer = RoomSerializer(
+            room,
+            data=request.data,
+            partial=True,
+            context={"request": request},
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
         return Response(RoomSerializer(room, context={"request": request}).data)
 
     def delete(self, request, pk):
@@ -73,6 +70,9 @@ class AdminRoomDetailView(APIView):
 
 @api_view(['GET'])
 def room_list(request):
+    from bookings.room_sync import refresh_bookings_past_checkout
+
+    refresh_bookings_past_checkout()
     rooms = Room.objects.all()
     serializer = RoomSerializer(rooms, many=True, context={'request': request})
     return Response(serializer.data)
@@ -80,6 +80,9 @@ def room_list(request):
 
 @api_view(['GET'])
 def room_detail(request, pk):
+    from bookings.room_sync import refresh_bookings_past_checkout
+
+    refresh_bookings_past_checkout()
     try:
         room = Room.objects.get(pk=pk)
     except Room.DoesNotExist:

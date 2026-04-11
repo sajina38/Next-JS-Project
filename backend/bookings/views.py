@@ -9,6 +9,7 @@ from users.permissions import IsAdminOrManager
 from .models import Booking
 from .room_sync import (
     recompute_room_status,
+    refresh_bookings_past_checkout,
     sync_room_after_booking_deleted,
     sync_room_status_after_booking_save,
 )
@@ -75,6 +76,7 @@ class BookingListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        refresh_bookings_past_checkout()
         if request.user.role in ("admin", "manager"):
             bookings = Booking.objects.select_related("room", "user").all()
         else:
@@ -94,6 +96,7 @@ class MyBookingsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        refresh_bookings_past_checkout()
         bookings = Booking.objects.select_related("room", "user").filter(user=request.user)
         serializer = BookingSerializer(bookings, many=True)
         return Response(serializer.data)
@@ -112,15 +115,19 @@ class BookingDetailView(APIView):
         return None
 
     def get(self, request, pk):
+        refresh_bookings_past_checkout()
         booking = self._get_booking(pk, request.user)
         if not booking:
             return Response({"error": "Booking not found."}, status=status.HTTP_404_NOT_FOUND)
+        booking.refresh_from_db()
         return Response(BookingSerializer(booking).data)
 
     def patch(self, request, pk):
+        refresh_bookings_past_checkout()
         booking = self._get_booking(pk, request.user)
         if not booking:
             return Response({"error": "Booking not found."}, status=status.HTTP_404_NOT_FOUND)
+        booking.refresh_from_db()
 
         if request.user.role in ("admin", "manager"):
             serializer = AdminBookingUpdateSerializer(booking, data=request.data, partial=True)
@@ -140,6 +147,16 @@ class BookingDetailView(APIView):
             return Response(
                 {"error": "You can only cancel your booking."},
                 status=status.HTTP_403_FORBIDDEN,
+            )
+        if booking.status == "cancelled":
+            return Response(
+                {"error": "This booking is already cancelled."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if booking.status == "checked-out":
+            return Response(
+                {"error": "This stay has completed; it cannot be cancelled."},
+                status=status.HTTP_400_BAD_REQUEST,
             )
         booking.status = new_status
         booking.save(update_fields=["status"])

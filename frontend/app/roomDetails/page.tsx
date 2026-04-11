@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { motion } from "motion/react";
 // to move to another page (go to booking page)
 
 export default function RoomDetails() {
@@ -29,7 +30,12 @@ export default function RoomDetails() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4 py-12">
       {/* Room Image */}
-      <div className="w-full max-w-4xl rounded-2xl overflow-hidden shadow-lg">
+      <motion.div
+        className="w-full max-w-4xl rounded-2xl overflow-hidden shadow-lg"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
         <img
           src={room.image}
           alt={room.name}
@@ -37,10 +43,15 @@ export default function RoomDetails() {
           height={500}
           className="object-cover w-full h-[400px]"
         />
-      </div>
+      </motion.div>
 
       {/* Room Info Section */}
-      <div className="max-w-3xl mt-8 text-center space-y-4">
+      <motion.div
+        className="max-w-3xl mt-8 text-center space-y-4"
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.12 }}
+      >
         <h1 className="text-4xl md:text-5xl font-bold text-gray-800">
           {room.name}
         </h1>
@@ -72,7 +83,7 @@ export default function RoomDetails() {
         >
           Book This Room
         </button>
-      </div>
+      </motion.div>
     </div>
   );
 }

@@ -27,6 +27,7 @@ interface BookingRow {
   guest_email: string;
   guest_phone: string;
   status: BookingStatus;
+  payment_status?: string;
   created_at: string;
 }
 
@@ -77,6 +78,11 @@ const STATUS_BADGE: Record<string, string> = {
   "checked-out": "bg-violet-50 text-violet-800 border border-violet-100",
 };
 
+const PAYMENT_STATUS_BADGE: Record<string, string> = {
+  paid: "bg-emerald-50 text-emerald-800 border border-emerald-100",
+  unpaid: "bg-amber-50 text-amber-800 border border-amber-100",
+};
+
 const STATUS_OPTIONS: BookingStatus[] = [
   "pending",
   "confirmed",
@@ -85,96 +91,59 @@ const STATUS_OPTIONS: BookingStatus[] = [
   "checked-out",
 ];
 
-function statusLabel(s: BookingStatus): string {
-  return s.replace(/-/g, " ");
-}
-
-/** Suggested next steps; for terminal states, list all other statuses for corrections. */
-function actionsForBooking(b: BookingRow): { status: BookingStatus; label: string }[] {
-  const s = b.status;
-  if (s === "pending") {
-    return [
-      { status: "confirmed", label: "Confirm" },
-      { status: "checked-in", label: "Check-in" },
-      { status: "cancelled", label: "Cancel" },
-    ];
+function GuestTableCell({ b }: { b: BookingRow }) {
+  const guest = (b.guest_name || "").trim();
+  const account = b.username;
+  if (!guest) {
+    return <p className="font-medium text-stone-900">{account}</p>;
   }
-  if (s === "confirmed") {
-    return [
-      { status: "checked-in", label: "Check-in" },
-      { status: "cancelled", label: "Cancel" },
-    ];
-  }
-  if (s === "checked-in") {
-    return [{ status: "checked-out", label: "Check-out" }];
-  }
-  return STATUS_OPTIONS.filter((st) => st !== s).map((st) => ({
-    status: st,
-    label: `→ ${statusLabel(st)}`,
-  }));
+  const sameAsAccount = guest.toLowerCase() === account.toLowerCase();
+  return (
+    <>
+      <p className="font-medium text-stone-900">{guest}</p>
+      {!sameAsAccount && <p className="text-xs text-stone-500">Account: {account}</p>}
+    </>
+  );
 }
 
 function BookingRowActions({
-  booking,
-  onApplyStatus,
   onEdit,
   onDelete,
-  busy,
 }: {
-  booking: BookingRow;
-  onApplyStatus: (id: number, status: BookingStatus) => void;
   onEdit: () => void;
   onDelete: () => void;
-  busy: boolean;
 }) {
-  const [choice, setChoice] = useState("");
-  const actions = useMemo(() => actionsForBooking(booking), [booking]);
-
-  useEffect(() => {
-    setChoice("");
-  }, [booking.id, booking.status]);
-
   return (
-    <div className="flex flex-nowrap items-center gap-1.5 min-w-0">
-      <select
-        value={choice}
-        onChange={(e) => setChoice(e.target.value)}
-        disabled={busy}
-        title="Booking action"
-        className="w-24 shrink-0 px-1 py-1 rounded-md border border-stone-200 text-xs bg-white text-stone-800 focus:outline-none focus:ring-2 focus:ring-emerald-600/25 focus:border-emerald-600"
-      >
-        <option value="">Action…</option>
-        {actions.map((a) => (
-          <option key={a.label} value={a.status}>
-            {a.label}
-          </option>
-        ))}
-      </select>
-      <button
-        type="button"
-        disabled={!choice || busy}
-        onClick={() => {
-          if (!choice) return;
-          onApplyStatus(booking.id, choice as BookingStatus);
-          setChoice("");
-        }}
-        className="shrink-0 px-2 py-1 rounded-md text-xs font-semibold bg-emerald-700 text-white hover:bg-emerald-800 disabled:opacity-40 disabled:pointer-events-none"
-      >
-        {busy ? "…" : "Apply"}
-      </button>
+    <div className="flex flex-nowrap items-center gap-1 min-w-0">
       <button
         type="button"
         onClick={onEdit}
-        className="shrink-0 px-2 py-1 rounded-md text-xs font-medium border border-stone-200 text-stone-700 hover:bg-stone-50 whitespace-nowrap"
+        title="Edit booking"
+        aria-label="Edit booking"
+        className="shrink-0 p-1.5 rounded-md text-emerald-700 hover:bg-emerald-50 border border-transparent hover:border-emerald-100 transition-colors"
       >
-        Edit
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"
+          />
+        </svg>
       </button>
       <button
         type="button"
         onClick={onDelete}
-        className="shrink-0 px-2 py-1 rounded-md text-xs font-medium text-rose-600 hover:bg-rose-50 whitespace-nowrap"
+        title="Delete booking"
+        aria-label="Delete booking"
+        className="shrink-0 p-1.5 rounded-md text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-100 transition-colors"
       >
-        Delete
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
+          />
+        </svg>
       </button>
     </div>
   );
@@ -218,7 +187,6 @@ export default function AdminBookingsPage() {
   const [creating, setCreating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [creatingCustomer, setCreatingCustomer] = useState(false);
-  const [applyingId, setApplyingId] = useState<number | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -360,25 +328,12 @@ export default function AdminBookingsPage() {
           String(b.id).includes(q) ||
           (b.guest_name && b.guest_name.toLowerCase().includes(q)) ||
           b.username.toLowerCase().includes(q) ||
-          b.room_number.toLowerCase().includes(q)
+          b.room_number.toLowerCase().includes(q) ||
+          (b.payment_status && b.payment_status.toLowerCase().includes(q))
       );
     }
     return list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }, [bookings, search, statusFilter]);
-
-  async function patchBooking(id: number, payload: Record<string, unknown>) {
-    setApplyingId(id);
-    try {
-      const { data } = await api.patch(`/bookings/${id}/`, payload);
-      setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, ...data } : b)));
-      setModal((m) => (m && m.id === id ? { ...m, ...data } : m));
-      void refreshRooms();
-    } catch (e) {
-      alert(formatApiError(e, "Could not update booking."));
-    } finally {
-      setApplyingId(null);
-    }
-  }
 
   async function handleDelete(id: number) {
     if (!confirm("Permanently delete this booking?")) return;
@@ -400,6 +355,7 @@ export default function AdminBookingsPage() {
     try {
       const { data } = await api.patch(`/bookings/${modal.id}/`, {
         status: fd.get("status"),
+        payment_status: fd.get("payment_status"),
         room: roomId,
         check_in: fd.get("check_in"),
         check_out: fd.get("check_out"),
@@ -418,12 +374,6 @@ export default function AdminBookingsPage() {
     } finally {
       setSaving(false);
     }
-  }
-
-  function guestLabel(b: BookingRow) {
-    const g = (b.guest_name || "").trim();
-    if (g) return g;
-    return b.username;
   }
 
   const roomChoicesForEdit = (b: BookingRow) =>
@@ -449,7 +399,7 @@ export default function AdminBookingsPage() {
         <button
           type="button"
           onClick={openAddBooking}
-          className="inline-flex items-center justify-center gap-2 bg-stone-900 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-stone-800 transition-colors shrink-0"
+          className="inline-flex items-center justify-center gap-2 bg-emerald-700 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-emerald-800 transition-colors shrink-0 shadow-sm shadow-emerald-700/20"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -486,7 +436,7 @@ export default function AdminBookingsPage() {
           onChange={(e) => setStatusFilter(e.target.value)}
           className="px-4 py-2.5 rounded-lg border border-stone-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600 lg:w-52"
         >
-          <option value="all">All statuses</option>
+          <option value="all">All booking statuses</option>
           {STATUS_OPTIONS.map((s) => (
             <option key={s} value={s}>
               {s.replace(/-/g, " ")}
@@ -505,15 +455,18 @@ export default function AdminBookingsPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[900px]">
+            <table className="w-full text-sm min-w-[1000px]">
               <thead>
                 <tr className="border-b border-stone-100 text-left text-stone-500 text-xs uppercase tracking-wider">
                   <th className="px-4 py-3 font-semibold">ID</th>
                   <th className="px-4 py-3 font-semibold">Guest</th>
                   <th className="px-4 py-3 font-semibold">Room</th>
                   <th className="px-4 py-3 font-semibold">Dates</th>
-                  <th className="px-4 py-3 font-semibold">Status</th>
-                  <th className="px-4 py-3 font-semibold">Actions</th>
+                  <th className="px-4 py-3 font-semibold">Booking status</th>
+                  <th className="px-4 py-3 font-semibold">Payment</th>
+                  <th scope="col" className="px-4 py-3 w-[88px]">
+                    <span className="sr-only">Edit or delete</span>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100">
@@ -521,8 +474,7 @@ export default function AdminBookingsPage() {
                   <tr key={b.id} className="hover:bg-stone-50/80 align-top">
                     <td className="px-4 py-3.5 font-mono text-stone-700">#{b.id}</td>
                     <td className="px-4 py-3.5">
-                      <p className="font-medium text-stone-900">{guestLabel(b)}</p>
-                      <p className="text-xs text-stone-500">{b.username}</p>
+                      <GuestTableCell b={b} />
                     </td>
                     <td className="px-4 py-3.5 text-stone-700">
                       <span className="font-medium">{b.room_number}</span>
@@ -540,11 +492,18 @@ export default function AdminBookingsPage() {
                         {b.status.replace(/-/g, " ")}
                       </span>
                     </td>
+                    <td className="px-4 py-3.5">
+                      <span
+                        className={`inline-block text-xs font-semibold px-2.5 py-1 rounded-md capitalize ${
+                          PAYMENT_STATUS_BADGE[b.payment_status || "unpaid"] ||
+                          "bg-stone-100 text-stone-600 border border-stone-200"
+                        }`}
+                      >
+                        {(b.payment_status || "unpaid").replace(/-/g, " ")}
+                      </span>
+                    </td>
                     <td className="px-4 py-3.5 whitespace-nowrap">
                       <BookingRowActions
-                        booking={b}
-                        busy={applyingId === b.id}
-                        onApplyStatus={(id, status) => void patchBooking(id, { status })}
                         onEdit={() => setModal(b)}
                         onDelete={() => handleDelete(b.id)}
                       />
@@ -562,7 +521,8 @@ export default function AdminBookingsPage() {
           <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 border border-stone-200 my-8 max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-bold text-stone-900 mb-1">Add booking</h3>
             <p className="text-sm text-stone-500 mb-4">
-              Create a reservation for a registered customer. Room must be available.
+              Phone or walk-in reservations start as <span className="font-medium text-stone-700">pending</span>.
+              Confirm payment or arrival by opening <span className="font-medium text-stone-700">Edit</span>. Online guest bookings are confirmed automatically.
             </p>
             <form onSubmit={handleCreateBooking} className="space-y-3">
               <div className="flex items-center justify-between gap-3">
@@ -847,9 +807,13 @@ export default function AdminBookingsPage() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 overflow-y-auto">
           <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 border border-stone-200 my-8 max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-bold text-stone-900 mb-1">Edit booking #{modal.id}</h3>
-            <p className="text-sm text-stone-500 mb-4">Assign room (must be available), dates, and status.</p>
+            <p className="text-sm text-stone-500 mb-4">
+              Assign room (must be available), dates, booking status, and payment status.
+            </p>
             <form onSubmit={saveEdit} className="space-y-3">
-              <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wide">Status</label>
+              <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wide">
+                Booking status
+              </label>
               <select
                 name="status"
                 defaultValue={modal.status}
@@ -860,6 +824,18 @@ export default function AdminBookingsPage() {
                     {s.replace(/-/g, " ")}
                   </option>
                 ))}
+              </select>
+
+              <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wide">
+                Payment status
+              </label>
+              <select
+                name="payment_status"
+                defaultValue={modal.payment_status || "unpaid"}
+                className="w-full px-3 py-2 rounded-lg border border-stone-200 text-sm"
+              >
+                <option value="unpaid">Unpaid</option>
+                <option value="paid">Paid</option>
               </select>
 
               <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wide">Room</label>

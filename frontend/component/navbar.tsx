@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
+import { motion } from "motion/react";
 import { useAuth } from "@/lib/auth";
 
 const BASE_MENU_ITEMS = [
@@ -174,14 +175,38 @@ export default function Navbar() {
         {/* Hero content */}
         {!isRoomDetail && (
           <div className="absolute inset-0 z-10 flex items-end justify-center pb-12 px-6">
-            <div className="max-w-3xl text-center text-white">
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 font-[var(--font-inter)]">
+            <motion.div
+              key={pathname ?? "hero"}
+              className="max-w-3xl text-center text-white"
+              initial={{ opacity: 0, y: 28 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 1.05, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <motion.h1
+                className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 font-[var(--font-inter)]"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{
+                  duration: 0.9,
+                  delay: 0.18,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
+              >
                 {hero.title}
-              </h1>
-              <p className="text-sm sm:text-base text-white/90 leading-relaxed">
+              </motion.h1>
+              <motion.p
+                className="text-sm sm:text-base text-white/90 leading-relaxed"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{
+                  duration: 0.9,
+                  delay: 0.45,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
+              >
                 {hero.description}
-              </p>
-            </div>
+              </motion.p>
+            </motion.div>
           </div>
         )}
       </div>

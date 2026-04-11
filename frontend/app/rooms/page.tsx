@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { motion } from "motion/react";
 import RoomCard from "@/component/roomCard";
 import api from "@/lib/api";
 
@@ -111,10 +112,22 @@ export default function RoomsPage() {
   return (
     <div className="section-pad">
       <div className="container-max">
-        <h1 className="text-3xl font-bold mb-8">Our Rooms</h1>
+        <motion.h1
+          className="text-3xl font-bold mb-8"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45 }}
+        >
+          Our Rooms
+        </motion.h1>
 
         {/* Filter Bar */}
-        <div className="card p-5 mb-8">
+        <motion.div
+          className="card p-5 mb-8"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, delay: 0.08 }}
+        >
           <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4">
             {/* Sort By */}
             <div className="min-w-[200px]">
@@ -187,28 +200,40 @@ export default function RoomsPage() {
               Apply Filters
             </button>
           </div>
-        </div>
+        </motion.div>
 
         {/* Room Listing */}
         <div className="flex flex-col gap-6">
           {filteredRooms.length > 0 ? (
-            filteredRooms.map((room) => (
-              <RoomCard
+            filteredRooms.map((room, i) => (
+              <motion.div
                 key={room.id}
-                id={room.id}
-                title={room.name}
-                price={parseFloat(room.price)}
-                description={room.description}
-                image={room.image}
-                isAvailable={room.is_available}
-              />
+                initial={{ opacity: 0, y: 22 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-24px" }}
+                transition={{ duration: 0.45, delay: Math.min(i * 0.06, 0.36) }}
+              >
+                <RoomCard
+                  id={room.id}
+                  title={room.name}
+                  price={parseFloat(room.price)}
+                  description={room.description}
+                  image={room.image}
+                  isAvailable={room.is_available}
+                />
+              </motion.div>
             ))
           ) : (
-            <div className="card p-12 text-center">
+            <motion.div
+              className="card p-12 text-center"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.4 }}
+            >
               <p className="text-[var(--muted)] text-lg">
                 No rooms match your filters. Try adjusting your criteria.
               </p>
-            </div>
+            </motion.div>
           )}
         </div>
       </div>

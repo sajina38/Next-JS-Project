@@ -47,7 +47,10 @@ class BookingSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "user", "status", "created_at", "payment_status", "total_amount"]
 
     def create(self, validated_data):
-        booking = super().create(validated_data)
+        # Guest self-service: confirmed immediately. Staff-created rows use StaffBookingCreateSerializer (pending).
+        booking = Booking.objects.create(
+            **validated_data, status=Booking.Status.CONFIRMED
+        )
         nights = (booking.check_out - booking.check_in).days
         nights = max(nights, 1)
         booking.total_amount = booking.room.price * nights
@@ -197,6 +200,7 @@ class StaffBookingCreateSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
+        # Phone / walk-in: pending until staff confirms payment or arrival in dashboard.
         booking = Booking.objects.create(**validated_data, status=Booking.Status.PENDING)
         nights = (booking.check_out - booking.check_in).days
         nights = max(nights, 1)

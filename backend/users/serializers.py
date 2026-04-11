@@ -66,3 +66,11 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "date_joined",
         )
         read_only_fields = ("id", "username", "role", "date_joined")
+
+    def to_internal_value(self, data):
+        # JSON/form clients often send "" for empty date; DRF DateField rejects that string.
+        if hasattr(data, "copy"):
+            data = data.copy()
+        if hasattr(data, "get") and data.get("date_of_birth") == "":
+            data["date_of_birth"] = None
+        return super().to_internal_value(data)

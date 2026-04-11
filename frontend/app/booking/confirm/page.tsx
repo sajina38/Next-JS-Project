@@ -264,7 +264,7 @@ function ConfirmBookingContent() {
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Booking Submitted!</h2>
           <p className="text-gray-500 mb-8">
-            Your reservation is pending confirmation. We&apos;ll get back to you shortly.
+            Your reservation is confirmed. You can view or manage it anytime from your profile.
           </p>
           <Link
             href="/rooms"
