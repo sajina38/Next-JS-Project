@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 560" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="loyaltyBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#022c22"/>
+      <stop offset="45%" stop-color="#064e3b"/>
+      <stop offset="100%" stop-color="#134e4a"/>
+    </linearGradient>
+    <linearGradient id="coin" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#d1fae5"/>
+      <stop offset="100%" stop-color="#34d399"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="2" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="1440" height="560" fill="url(#loyaltyBg)"/>
+  <!-- soft circles = "points" -->
+  <circle cx="180" cy="120" r="90" fill="#10b981" opacity="0.12"/>
+  <circle cx="1280" cy="380" r="140" fill="#34d399" opacity="0.1"/>
+  <circle cx="980" cy="100" r="70" fill="#6ee7b7" opacity="0.08"/>
+  <!-- stacked coins / reward medallion -->
+  <g transform="translate(720 200)" filter="url(#glow)">
+    <ellipse cx="0" cy="48" rx="72" ry="18" fill="#047857" opacity="0.5"/>
+    <ellipse cx="0" cy="32" rx="72" ry="18" fill="#059669" opacity="0.65"/>
+    <ellipse cx="0" cy="16" rx="72" ry="18" fill="#10b981" opacity="0.8"/>
+    <circle cx="0" cy="0" r="64" fill="url(#coin)" stroke="#065f46" stroke-width="2"/>
+    <path fill="#065f46" transform="scale(0.85)" d="M0-14L3.5-3.5L14-3.5L5.5 3.5L8.5 14L0 6.5L-8.5 14L-5.5 3.5L-14-3.5L-3.5-3.5Z"/>
+  </g>
+  <!-- stars = loyalty sparkle -->
+  <g fill="#ecfdf5" opacity="0.85">
+    <path transform="translate(200 280) scale(1.2)" d="M0-18L4-4L18-4L6 4L10 18L0 8L-10 18L-6 4L-18-4L-4-4Z"/>
+    <path transform="translate(420 140) scale(0.7)" d="M0-18L4-4L18-4L6 4L10 18L0 8L-10 18L-6 4L-18-4L-4-4Z"/>
+    <path transform="translate(1100 200) scale(1)" d="M0-18L4-4L18-4L6 4L10 18L0 8L-10 18L-6 4L-18-4L-4-4Z"/>
+    <path transform="translate(1240 120) scale(0.55)" d="M0-18L4-4L18-4L6 4L10 18L0 8L-10 18L-6 4L-18-4L-4-4Z"/>
+    <path transform="translate(320 420) scale(0.9)" d="M0-18L4-4L18-4L6 4L10 18L0 8L-10 18L-6 4L-18-4L-4-4Z"/>
+    <path transform="translate(900 440) scale(0.65)" d="M0-18L4-4L18-4L6 4L10 18L0 8L-10 18L-6 4L-18-4L-4-4Z"/>
+  </g>
+  <!-- small "point" dots -->
+  <g fill="#a7f3d0" opacity="0.35">
+    <circle cx="100" cy="200" r="3"/><circle cx="140" cy="240" r="2"/><circle cx="520" cy="360" r="2.5"/>
+    <circle cx="800" cy="80" r="2"/><circle cx="1320" cy="260" r="3"/><circle cx="1180" cy="480" r="2"/>
+    <circle cx="600" cy="180" r="2"/><circle cx="240" cy="480" r="2.5"/>
+  </g>
+</svg>

@@ -33,7 +33,7 @@ const HERO_CONFIG: Record<
       "Elegant accommodations designed for comfort. From cozy deluxe rooms to spacious suites with stunning views.",
   },
   "/loyalty": {
-    image: "/dining.png",
+    image: "/loyalty-hero.svg",
     title: "Urban Rewards",
     description:
       "Earn points on every confirmed stay and redeem them for savings on your next booking. Simple, transparent, guest-first.",
