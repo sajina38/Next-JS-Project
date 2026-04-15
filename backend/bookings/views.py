@@ -1,12 +1,15 @@
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import status
-from rest_framework.views import APIView
-from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from users.permissions import IsAdminOrManager
 
-from .models import Booking
+from .models import Booking, validate_booking_status_transition
+from .email_notify import send_booking_confirmation_email
+from .loyalty import grant_loyalty_points_when_confirmed
 from .room_sync import (
     recompute_room_status,
     refresh_bookings_past_checkout,
@@ -32,7 +35,7 @@ class StaffCustomerListView(APIView):
         rows = (
             User.objects.filter(role=User.Role.CUSTOMER, is_active=True)
             .order_by("username")
-            .values("id", "username", "email", "first_name", "last_name")
+            .values("id", "username", "email", "first_name", "last_name", "loyalty_points")
         )
         return Response(list(rows))
 
@@ -53,6 +56,7 @@ class StaffCustomerCreateView(APIView):
                 "email": user.email,
                 "first_name": user.first_name,
                 "last_name": user.last_name,
+                "loyalty_points": user.loyalty_points,
             },
             status=status.HTTP_201_CREATED,
         )
@@ -85,10 +89,13 @@ class BookingListCreateView(APIView):
         return Response(serializer.data)
 
     def post(self, request):
-        serializer = BookingSerializer(data=request.data)
+        serializer = BookingSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         booking = serializer.save(user=request.user)
         sync_room_status_after_booking_save(booking)
+        # Confirmation email (SMTP: EMAIL_HOST_USER + EMAIL_HOST_PASSWORD in backend/.env — see config/settings.py).
+        if booking.status == Booking.Status.CONFIRMED:
+            send_booking_confirmation_email(booking)
         return Response(BookingSerializer(booking).data, status=status.HTTP_201_CREATED)
 
 
@@ -132,12 +139,16 @@ class BookingDetailView(APIView):
         if request.user.role in ("admin", "manager"):
             serializer = AdminBookingUpdateSerializer(booking, data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
+            old_status = booking.status
             old_room = booking.room
             serializer.save()
             booking.refresh_from_db()
             if old_room.pk != booking.room_id:
                 recompute_room_status(old_room)
             sync_room_status_after_booking_save(booking)
+            if old_status != Booking.Status.CONFIRMED and booking.status == Booking.Status.CONFIRMED:
+                send_booking_confirmation_email(booking)
+                grant_loyalty_points_when_confirmed(booking, old_status)
             return Response(BookingSerializer(booking).data)
 
         new_status = request.data.get("status")
@@ -148,16 +159,21 @@ class BookingDetailView(APIView):
                 {"error": "You can only cancel your booking."},
                 status=status.HTTP_403_FORBIDDEN,
             )
-        if booking.status == "cancelled":
+        if booking.status == Booking.Status.CANCELLED:
             return Response(
                 {"error": "This booking is already cancelled."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        if booking.status == "checked-out":
+        if booking.status == Booking.Status.CHECKOUT:
             return Response(
                 {"error": "This stay has completed; it cannot be cancelled."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        try:
+            validate_booking_status_transition(booking.status, new_status)
+        except DjangoValidationError as e:
+            msg = e.messages[0] if e.messages else "Cannot cancel this booking."
+            return Response({"error": msg}, status=status.HTTP_400_BAD_REQUEST)
         booking.status = new_status
         booking.save(update_fields=["status"])
         sync_room_status_after_booking_save(booking)

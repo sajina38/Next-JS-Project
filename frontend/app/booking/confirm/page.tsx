@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
@@ -66,6 +66,14 @@ function formatBookingError(err: unknown): string {
   return "Booking failed. Please try again.";
 }
 
+/** Matches backend: 100 pts = Rs. 100 off, capped by gross total in Rs. 100 blocks. */
+function previewLoyaltyDiscount(loyaltyPoints: number, gross: number) {
+  if (loyaltyPoints < 100 || gross < 100) return 0;
+  const blocksUser = Math.floor(loyaltyPoints / 100);
+  const blocksFit = Math.floor(gross / 100);
+  return Math.min(blocksUser, blocksFit) * 100;
+}
+
 function ConfirmBookingContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -105,6 +113,9 @@ function ConfirmBookingContent() {
   // Payment
   const [paymentOption, setPaymentOption] = useState<PaymentOption>("pay-at-checkin");
 
+  const [loyaltyPoints, setLoyaltyPoints] = useState(0);
+  const [redeemLoyalty, setRedeemLoyalty] = useState(false);
+
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
@@ -121,6 +132,14 @@ function ConfirmBookingContent() {
   }, [authLoading, user, router]);
 
   useEffect(() => {
+    if (!user) return;
+    api
+      .get<{ loyalty_points?: number }>("/auth/profile/")
+      .then((res) => setLoyaltyPoints(res.data.loyalty_points ?? 0))
+      .catch(() => setLoyaltyPoints(0));
+  }, [user]);
+
+  useEffect(() => {
     if (!roomId) return;
     api
       .get(`/rooms/${roomId}/`)
@@ -130,6 +149,15 @@ function ConfirmBookingContent() {
       })
       .catch(() => setLoading(false));
   }, [roomId]);
+
+  useEffect(() => {
+    if (!success) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [success]);
 
   const handleIdPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -151,6 +179,12 @@ function ConfirmBookingContent() {
       : 0;
   const pricePerNight = room ? parseFloat(room.price) : 0;
   const totalPrice = nights * pricePerNight;
+
+  const loyaltyDiscount = useMemo(
+    () => (redeemLoyalty ? previewLoyaltyDiscount(loyaltyPoints, totalPrice) : 0),
+    [redeemLoyalty, loyaltyPoints, totalPrice],
+  );
+  const payableTotal = Math.max(0, totalPrice - loyaltyDiscount);
 
   const get24HourTime = () => {
     let h = parseInt(arrivalHour);
@@ -189,6 +223,12 @@ function ConfirmBookingContent() {
       setError("Please select a payment option.");
       return;
     }
+    if (paymentOption === "khalti" && payableTotal < 10) {
+      setError(
+        "After loyalty discount the total is below Rs. 10, which Khalti cannot charge. Uncheck loyalty credit or choose more nights.",
+      );
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -206,13 +246,12 @@ function ConfirmBookingContent() {
       formData.append("arrival_time", get24HourTime());
       formData.append("special_requests", specialRequests);
       formData.append("payment_method", paymentOption);
+      formData.append("redeem_loyalty", redeemLoyalty ? "true" : "false");
       if (idPhoto) {
         formData.append("id_photo", idPhoto);
       }
 
-      const { data: booking } = await api.post("/bookings/", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const { data: booking } = await api.post("/bookings/", formData);
 
       if (paymentOption === "khalti") {
         const { data: khalti } = await api.post("/payments/khalti/initiate/", {
@@ -253,32 +292,8 @@ function ConfirmBookingContent() {
     );
   }
 
-  if (success) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4">
-        <div className="text-center max-w-md">
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Booking Submitted!</h2>
-          <p className="text-gray-500 mb-8">
-            Your reservation is confirmed. You can view or manage it anytime from your profile.
-          </p>
-          <Link
-            href="/rooms"
-            className="px-6 py-3 bg-emerald-700 text-white rounded-full font-medium hover:bg-emerald-800 transition-colors"
-          >
-            Browse More Rooms
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-[var(--bg)]">
+    <div className="min-h-screen bg-[var(--bg)] relative">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12 md:py-16">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Confirm Your Booking</h1>
         <p className="text-gray-500 mb-10">Please fill in the details below to complete your reservation.</p>
@@ -478,6 +493,29 @@ function ConfirmBookingContent() {
               </label>
             </div>
 
+            {/* Loyalty */}
+            {loyaltyPoints >= 100 && totalPrice >= 100 ? (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <h2 className="text-lg font-bold text-gray-900 mb-2">Loyalty credit</h2>
+                <p className="text-gray-500 text-sm mb-4">
+                  You have <span className="font-semibold text-gray-800">{loyaltyPoints} points</span>. Redeem in
+                  blocks of 100 points for Rs. 100 off each (up to your stay total).
+                </p>
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={redeemLoyalty}
+                    onChange={(e) => setRedeemLoyalty(e.target.checked)}
+                    className="mt-1 rounded border-gray-300 text-emerald-700 focus:ring-emerald-600"
+                  />
+                  <span className="text-sm text-gray-800 leading-snug">
+                    Apply loyalty discount to this booking (up to Rs.{" "}
+                    {previewLoyaltyDiscount(loyaltyPoints, totalPrice).toLocaleString()} off).
+                  </span>
+                </label>
+              </div>
+            ) : null}
+
             {/* 4. Payment Options */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <h2 className="text-lg font-bold text-gray-900 mb-2">
@@ -526,7 +564,8 @@ function ConfirmBookingContent() {
                     <p className="font-semibold text-gray-900 text-sm">Pay online with Khalti</p>
                     <p className="text-gray-500 text-xs mt-1">
                       Complete your payment securely through Khalti before arrival. You will be redirected to their
-                      checkout to confirm the transaction, then returned to our site.
+                      checkout to confirm the transaction, then returned to our site. The room is only held for you
+                      after payment succeeds—if you leave Khalti without paying, you can change dates and book again.
                     </p>
                   </div>
                 </label>
@@ -603,6 +642,12 @@ function ConfirmBookingContent() {
                       Rs. {totalPrice.toLocaleString()}
                     </span>
                   </div>
+                  {loyaltyDiscount > 0 ? (
+                    <div className="flex justify-between text-emerald-800">
+                      <span>Loyalty discount</span>
+                      <span className="font-medium">− Rs. {loyaltyDiscount.toLocaleString()}</span>
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="h-px bg-gray-100" />
@@ -610,7 +655,7 @@ function ConfirmBookingContent() {
                 <div className="flex justify-between items-baseline">
                   <span className="text-base font-bold text-gray-900">Total</span>
                   <span className="text-xl font-bold text-emerald-700">
-                    Rs. {totalPrice.toLocaleString()}
+                    Rs. {payableTotal.toLocaleString()}
                   </span>
                 </div>
 
@@ -629,6 +674,37 @@ function ConfirmBookingContent() {
           </div>
         </div>
       </div>
+
+      {success && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="booking-success-title"
+        >
+          <div className="relative bg-white rounded-2xl shadow-2xl border border-gray-100 max-w-md w-full p-8 text-center">
+            <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <svg className="w-10 h-10 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h2 id="booking-success-title" className="text-2xl font-bold text-gray-900 mb-2">
+              Booking Submitted!
+            </h2>
+            <p className="text-gray-500 text-sm mb-8 leading-relaxed">
+              Your booking is saved as <strong className="text-gray-700">pending</strong> until you pay at the front
+              desk. Staff will mark it <strong className="text-gray-700">confirmed</strong> after payment. Track status
+              anytime from your profile.
+            </p>
+            <Link
+              href="/rooms"
+              className="inline-flex items-center justify-center w-full px-6 py-3.5 bg-emerald-700 text-white rounded-full font-semibold text-sm hover:bg-emerald-800 transition-colors shadow-sm shadow-emerald-700/25"
+            >
+              Browse More Rooms
+            </Link>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

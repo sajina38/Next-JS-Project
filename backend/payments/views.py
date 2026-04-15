@@ -10,7 +10,10 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from bookings.email_notify import send_booking_confirmation_email
+from bookings.loyalty import grant_loyalty_points_when_confirmed
 from bookings.models import Booking
+from bookings.room_sync import sync_room_status_after_booking_save
 from bookings.serializers import BookingSerializer
 
 # Khalti minimum amount is 1000 paisa (Rs. 10)
@@ -210,7 +213,13 @@ class KhaltiVerifyView(APIView):
         if po and str(po) != f"booking-{booking.id}":
             return Response({"error": "Order id mismatch."}, status=400)
 
+        old_status = booking.status
         booking.payment_status = Booking.PaymentStatus.PAID
-        booking.save(update_fields=["payment_status"])
+        booking.status = Booking.Status.CONFIRMED
+        booking.save(update_fields=["payment_status", "status"])
+        sync_room_status_after_booking_save(booking)
+        if old_status != Booking.Status.CONFIRMED:
+            send_booking_confirmation_email(booking)
+            grant_loyalty_points_when_confirmed(booking, old_status)
 
         return Response({"ok": True, "booking": BookingSerializer(booking).data})

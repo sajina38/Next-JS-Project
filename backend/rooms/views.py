@@ -38,13 +38,11 @@ class AdminRoomListCreateView(APIView):
         return Response(serializer.data)
 
     def post(self, request):
-        serializer = RoomSerializer(data=request.data)
+        # Multipart uploads are merged into request.data by DRF; do not pass ``files=`` to Serializer.
+        serializer = RoomSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(
-            RoomSerializer(serializer.instance, context={"request": request}).data,
-            status=status.HTTP_201_CREATED,
-        )
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class AdminRoomDetailView(APIView):
@@ -60,7 +58,7 @@ class AdminRoomDetailView(APIView):
         )
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(RoomSerializer(room, context={"request": request}).data)
+        return Response(serializer.data)
 
     def delete(self, request, pk):
         room = get_object_or_404(Room, pk=pk)

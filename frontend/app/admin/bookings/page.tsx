@@ -3,12 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import api from "@/lib/api";
 
-type BookingStatus =
-  | "pending"
-  | "confirmed"
-  | "cancelled"
-  | "checked-in"
-  | "checked-out";
+type BookingStatus = "pending" | "confirmed" | "cancelled" | "checkout";
 
 interface BookingRow {
   id: number;
@@ -28,7 +23,18 @@ interface BookingRow {
   guest_phone: string;
   status: BookingStatus;
   payment_status?: string;
+  loyalty_points_redeemed?: number;
   created_at: string;
+}
+
+/** Full row from GET /bookings/:id/ (admin). */
+interface BookingDetail extends BookingRow {
+  guest_country?: string;
+  payment_method?: string;
+  total_amount?: string;
+  special_requests?: string;
+  arrival_time?: string | null;
+  id_photo?: string | null;
 }
 
 interface AdminRoomOption {
@@ -45,6 +51,7 @@ interface CustomerOption {
   email: string;
   first_name: string;
   last_name: string;
+  loyalty_points?: number;
 }
 
 const PAYMENT_METHOD_OPTIONS = [
@@ -68,14 +75,14 @@ const emptyAddForm = {
   guest_country: "Nepal",
   payment_method: "pay-at-checkin",
   special_requests: "",
+  redeem_loyalty: false,
 };
 
 const STATUS_BADGE: Record<string, string> = {
   pending: "bg-amber-50 text-amber-800 border border-amber-100",
   confirmed: "bg-emerald-50 text-emerald-800 border border-emerald-100",
   cancelled: "bg-stone-100 text-stone-600 border border-stone-200",
-  "checked-in": "bg-sky-50 text-sky-800 border border-sky-100",
-  "checked-out": "bg-violet-50 text-violet-800 border border-violet-100",
+  checkout: "bg-violet-50 text-violet-800 border border-violet-100",
 };
 
 const PAYMENT_STATUS_BADGE: Record<string, string> = {
@@ -83,13 +90,23 @@ const PAYMENT_STATUS_BADGE: Record<string, string> = {
   unpaid: "bg-amber-50 text-amber-800 border border-amber-100",
 };
 
-const STATUS_OPTIONS: BookingStatus[] = [
-  "pending",
-  "confirmed",
-  "cancelled",
-  "checked-in",
-  "checked-out",
-];
+const STATUS_OPTIONS: BookingStatus[] = ["pending", "confirmed", "cancelled", "checkout"];
+
+function paymentMethodLabel(value: string | undefined): string {
+  if (!value) return "—";
+  const hit = PAYMENT_METHOD_OPTIONS.find((p) => p.value === value);
+  return hit?.label || value;
+}
+
+function bookingStatusLabel(value: string): string {
+  const labels: Record<string, string> = {
+    pending: "Pending",
+    confirmed: "Confirmed",
+    cancelled: "Cancelled",
+    checkout: "Checkout",
+  };
+  return labels[value] || value.replace(/-/g, " ");
+}
 
 function GuestTableCell({ b }: { b: BookingRow }) {
   const guest = (b.guest_name || "").trim();
@@ -107,14 +124,32 @@ function GuestTableCell({ b }: { b: BookingRow }) {
 }
 
 function BookingRowActions({
+  onView,
   onEdit,
   onDelete,
 }: {
+  onView: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
   return (
     <div className="flex flex-nowrap items-center gap-1 min-w-0">
+      <button
+        type="button"
+        onClick={onView}
+        title="View details"
+        aria-label="View booking details"
+        className="shrink-0 p-1.5 rounded-md text-stone-600 hover:bg-stone-100 border border-transparent hover:border-stone-200 transition-colors"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"
+          />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+      </button>
       <button
         type="button"
         onClick={onEdit}
@@ -174,6 +209,8 @@ export default function AdminBookingsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [modal, setModal] = useState<BookingRow | null>(null);
+  const [viewDetail, setViewDetail] = useState<BookingDetail | null>(null);
+  const [viewLoading, setViewLoading] = useState(false);
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [addForm, setAddForm] = useState({ ...emptyAddForm });
   const [addingCustomer, setAddingCustomer] = useState(false);
@@ -196,6 +233,17 @@ export default function AdminBookingsPage() {
         setRooms(rRes.data);
       })
       .finally(() => setLoading(false));
+  }, []);
+
+  /** Refetch without blanking the table (e.g. after edit save). */
+  const silentRefresh = useCallback(async () => {
+    try {
+      const [bRes, rRes] = await Promise.all([api.get("/bookings/"), api.get("/admin/rooms/")]);
+      setBookings(bRes.data);
+      setRooms(rRes.data);
+    } catch {
+      /* ignore */
+    }
   }, []);
 
   useEffect(() => {
@@ -258,6 +306,7 @@ export default function AdminBookingsPage() {
         guest_country: addForm.guest_country.trim() || "Nepal",
         payment_method: addForm.payment_method,
         special_requests: addForm.special_requests.trim(),
+        redeem_loyalty: addForm.redeem_loyalty,
       });
       setBookings((prev) => [data, ...prev]);
       setAddModalOpen(false);
@@ -341,8 +390,23 @@ export default function AdminBookingsPage() {
       await api.delete(`/bookings/${id}/`);
       setBookings((prev) => prev.filter((b) => b.id !== id));
       setModal((m) => (m?.id === id ? null : m));
+      setViewDetail((v) => (v?.id === id ? null : v));
     } catch {
       alert("Could not delete booking.");
+    }
+  }
+
+  async function openBookingView(id: number) {
+    setModal(null);
+    setViewLoading(true);
+    setViewDetail(null);
+    try {
+      const { data } = await api.get<BookingDetail>(`/bookings/${id}/`);
+      setViewDetail(data);
+    } catch {
+      alert("Could not load booking details.");
+    } finally {
+      setViewLoading(false);
     }
   }
 
@@ -368,7 +432,7 @@ export default function AdminBookingsPage() {
       });
       setBookings((prev) => prev.map((b) => (b.id === modal.id ? { ...b, ...data } : b)));
       setModal(null);
-      void refreshRooms();
+      void silentRefresh();
     } catch (e) {
       alert(formatApiError(e, "Could not save. Check room is available and dates are valid."));
     } finally {
@@ -386,8 +450,15 @@ export default function AdminBookingsPage() {
 
   function customerLabel(c: CustomerOption) {
     const name = [c.first_name, c.last_name].filter(Boolean).join(" ").trim();
-    return name ? `${c.username} (${name})` : c.username;
+    const pts = c.loyalty_points ?? 0;
+    const base = name ? `${c.username} (${name})` : c.username;
+    return `${base} · ${pts} pts`;
   }
+
+  const selectedCustomer = useMemo(
+    () => customers.find((c) => String(c.id) === addForm.user),
+    [customers, addForm.user],
+  );
 
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto">
@@ -439,7 +510,7 @@ export default function AdminBookingsPage() {
           <option value="all">All booking statuses</option>
           {STATUS_OPTIONS.map((s) => (
             <option key={s} value={s}>
-              {s.replace(/-/g, " ")}
+              {bookingStatusLabel(s)}
             </option>
           ))}
         </select>
@@ -464,8 +535,8 @@ export default function AdminBookingsPage() {
                   <th className="px-4 py-3 font-semibold">Dates</th>
                   <th className="px-4 py-3 font-semibold">Booking status</th>
                   <th className="px-4 py-3 font-semibold">Payment</th>
-                  <th scope="col" className="px-4 py-3 w-[88px]">
-                    <span className="sr-only">Edit or delete</span>
+                  <th scope="col" className="px-4 py-3 w-[120px]">
+                    <span className="sr-only">View, edit, or delete</span>
                   </th>
                 </tr>
               </thead>
@@ -489,7 +560,7 @@ export default function AdminBookingsPage() {
                           STATUS_BADGE[b.status] || "bg-stone-100 text-stone-600"
                         }`}
                       >
-                        {b.status.replace(/-/g, " ")}
+                        {bookingStatusLabel(b.status)}
                       </span>
                     </td>
                     <td className="px-4 py-3.5">
@@ -504,7 +575,11 @@ export default function AdminBookingsPage() {
                     </td>
                     <td className="px-4 py-3.5 whitespace-nowrap">
                       <BookingRowActions
-                        onEdit={() => setModal(b)}
+                        onView={() => void openBookingView(b.id)}
+                        onEdit={() => {
+                          setViewDetail(null);
+                          setModal(b);
+                        }}
                         onDelete={() => handleDelete(b.id)}
                       />
                     </td>
@@ -522,7 +597,9 @@ export default function AdminBookingsPage() {
             <h3 className="text-lg font-bold text-stone-900 mb-1">Add booking</h3>
             <p className="text-sm text-stone-500 mb-4">
               Phone or walk-in reservations start as <span className="font-medium text-stone-700">pending</span>.
-              Confirm payment or arrival by opening <span className="font-medium text-stone-700">Edit</span>. Online guest bookings are confirmed automatically.
+              Pay at hotel stays <span className="font-medium text-stone-700">Pending</span> until payment is taken; set{" "}
+              <span className="font-medium text-stone-700">Confirmed</span> in Edit. Khalti payments confirm automatically. Set{" "}
+              <span className="font-medium text-stone-700">Checkout</span> when the stay ends.
             </p>
             <form onSubmit={handleCreateBooking} className="space-y-3">
               <div className="flex items-center justify-between gap-3">
@@ -755,6 +832,21 @@ export default function AdminBookingsPage() {
                 className="w-full px-3 py-2 rounded-lg border border-stone-200 text-sm"
               />
 
+              {selectedCustomer && selectedCustomer.loyalty_points != null && selectedCustomer.loyalty_points >= 100 ? (
+                <label className="flex items-start gap-2 text-sm text-stone-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={addForm.redeem_loyalty}
+                    onChange={(e) => setAddForm((f) => ({ ...f, redeem_loyalty: e.target.checked }))}
+                    className="mt-0.5 rounded border-stone-300 text-emerald-700 focus:ring-emerald-600"
+                  />
+                  <span>
+                    Redeem loyalty credit for this customer (100 pts = Rs. 100 off per block; needs pre-discount
+                    total ≥ Rs. 100).
+                  </span>
+                </label>
+              ) : null}
+
               <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wide">Payment method</label>
               <select
                 value={addForm.payment_method}
@@ -803,6 +895,125 @@ export default function AdminBookingsPage() {
         </div>
       )}
 
+      {(viewLoading || viewDetail) && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 border border-stone-200 my-8 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-bold text-stone-900 mb-1">
+              {viewLoading ? "Loading…" : `Booking #${viewDetail?.id}`}
+            </h3>
+            {!viewLoading && viewDetail && (
+              <>
+                <p className="text-sm text-stone-500 mb-4">Guest, account, room, and payment details.</p>
+                <dl className="space-y-3 text-sm border-t border-stone-100 pt-4">
+                  <div className="grid grid-cols-[8rem_1fr] gap-2">
+                    <dt className="text-stone-500 font-medium">Account user</dt>
+                    <dd className="text-stone-900 break-all">{viewDetail.username}</dd>
+                  </div>
+                  <div className="grid grid-cols-[8rem_1fr] gap-2">
+                    <dt className="text-stone-500 font-medium">Guest name</dt>
+                    <dd className="text-stone-900">{viewDetail.guest_name || "—"}</dd>
+                  </div>
+                  <div className="grid grid-cols-[8rem_1fr] gap-2">
+                    <dt className="text-stone-500 font-medium">Email</dt>
+                    <dd className="text-stone-900 break-all">{viewDetail.guest_email || "—"}</dd>
+                  </div>
+                  <div className="grid grid-cols-[8rem_1fr] gap-2">
+                    <dt className="text-stone-500 font-medium">Phone</dt>
+                    <dd className="text-stone-900">{viewDetail.guest_phone || "—"}</dd>
+                  </div>
+                  <div className="grid grid-cols-[8rem_1fr] gap-2">
+                    <dt className="text-stone-500 font-medium">Country</dt>
+                    <dd className="text-stone-900">{viewDetail.guest_country || "—"}</dd>
+                  </div>
+                  <div className="grid grid-cols-[8rem_1fr] gap-2">
+                    <dt className="text-stone-500 font-medium">Room</dt>
+                    <dd className="text-stone-900">
+                      #{viewDetail.room_number} — {viewDetail.room_type}
+                      {viewDetail.room_name ? ` (${viewDetail.room_name})` : ""}
+                    </dd>
+                  </div>
+                  <div className="grid grid-cols-[8rem_1fr] gap-2">
+                    <dt className="text-stone-500 font-medium">Dates</dt>
+                    <dd className="text-stone-900 tabular-nums">
+                      {viewDetail.check_in} → {viewDetail.check_out}
+                    </dd>
+                  </div>
+                  <div className="grid grid-cols-[8rem_1fr] gap-2">
+                    <dt className="text-stone-500 font-medium">Guests</dt>
+                    <dd className="text-stone-900">
+                      {viewDetail.guests} total ({viewDetail.adults} adults, {viewDetail.children} children)
+                    </dd>
+                  </div>
+                  <div className="grid grid-cols-[8rem_1fr] gap-2">
+                    <dt className="text-stone-500 font-medium">Arrival</dt>
+                    <dd className="text-stone-900">{viewDetail.arrival_time || "—"}</dd>
+                  </div>
+                  <div className="grid grid-cols-[8rem_1fr] gap-2">
+                    <dt className="text-stone-500 font-medium">Special requests</dt>
+                    <dd className="text-stone-900 whitespace-pre-wrap">{viewDetail.special_requests || "—"}</dd>
+                  </div>
+                  <div className="grid grid-cols-[8rem_1fr] gap-2">
+                    <dt className="text-stone-500 font-medium">Booking status</dt>
+                    <dd className="text-stone-900 capitalize">{bookingStatusLabel(viewDetail.status)}</dd>
+                  </div>
+                  <div className="grid grid-cols-[8rem_1fr] gap-2">
+                    <dt className="text-stone-500 font-medium">Payment</dt>
+                    <dd className="text-stone-900 capitalize">
+                      {(viewDetail.payment_status || "unpaid").replace(/-/g, " ")} ·{" "}
+                      {paymentMethodLabel(viewDetail.payment_method)}
+                    </dd>
+                  </div>
+                  <div className="grid grid-cols-[8rem_1fr] gap-2">
+                    <dt className="text-stone-500 font-medium">Total (NPR)</dt>
+                    <dd className="text-stone-900 font-semibold tabular-nums">{viewDetail.total_amount ?? "—"}</dd>
+                  </div>
+                  {(viewDetail.loyalty_points_redeemed ?? 0) > 0 ? (
+                    <div className="grid grid-cols-[8rem_1fr] gap-2">
+                      <dt className="text-stone-500 font-medium">Loyalty redeemed</dt>
+                      <dd className="text-stone-900 tabular-nums">
+                        {viewDetail.loyalty_points_redeemed} points (Rs.{" "}
+                        {viewDetail.loyalty_points_redeemed} off at booking)
+                      </dd>
+                    </div>
+                  ) : null}
+                  <div className="grid grid-cols-[8rem_1fr] gap-2">
+                    <dt className="text-stone-500 font-medium">Created</dt>
+                    <dd className="text-stone-900 text-xs">{viewDetail.created_at}</dd>
+                  </div>
+                  {viewDetail.id_photo ? (
+                    <div className="col-span-full pt-2">
+                      <dt className="text-stone-500 font-medium text-sm mb-2">ID document</dt>
+                      <dd>
+                        <a
+                          href={viewDetail.id_photo}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-emerald-700 text-sm font-medium hover:underline"
+                        >
+                          Open uploaded file
+                        </a>
+                      </dd>
+                    </div>
+                  ) : null}
+                </dl>
+                <button
+                  type="button"
+                  onClick={() => setViewDetail(null)}
+                  className="mt-6 w-full py-2.5 rounded-lg border border-stone-200 text-sm font-medium text-stone-700 hover:bg-stone-50"
+                >
+                  Close
+                </button>
+              </>
+            )}
+            {viewLoading && (
+              <div className="py-12 flex justify-center">
+                <div className="w-8 h-8 border-4 border-stone-200 border-t-emerald-700 rounded-full animate-spin" />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {modal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 overflow-y-auto">
           <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 border border-stone-200 my-8 max-h-[90vh] overflow-y-auto">
@@ -821,7 +1032,7 @@ export default function AdminBookingsPage() {
               >
                 {STATUS_OPTIONS.map((s) => (
                   <option key={s} value={s}>
-                    {s.replace(/-/g, " ")}
+                    {bookingStatusLabel(s)}
                   </option>
                 ))}
               </select>

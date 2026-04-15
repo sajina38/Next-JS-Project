@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/auth";
 const BASE_MENU_ITEMS = [
   { label: "Home", href: "/" },
   { label: "Rooms & Suites", href: "/rooms" },
+  { label: "Loyalty", href: "/loyalty" },
   { label: "About Us", href: "/about" },
   { label: "Contact", href: "/contact" },
 ];
@@ -30,6 +31,12 @@ const HERO_CONFIG: Record<
     title: "Our Rooms & Suites",
     description:
       "Elegant accommodations designed for comfort. From cozy deluxe rooms to spacious suites with stunning views.",
+  },
+  "/loyalty": {
+    image: "/dining.png",
+    title: "Urban Rewards",
+    description:
+      "Earn points on every confirmed stay and redeem them for savings on your next booking. Simple, transparent, guest-first.",
   },
   "/about": {
     image: "/meetingRoom.png",

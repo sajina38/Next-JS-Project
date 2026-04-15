@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { usePathname } from "next/navigation";
 import { motion } from "motion/react";
 import RoomCard from "@/component/roomCard";
 import api from "@/lib/api";
@@ -15,11 +16,20 @@ interface Room {
   capacity: number;
   image: string | null;
   is_available: boolean;
+  room_status?: string;
 }
 
 type SortOption = "default" | "price-low" | "price-high";
 
+function isListedAsAvailable(room: Room): boolean {
+  if (room.room_status) {
+    return room.room_status === "available";
+  }
+  return room.is_available;
+}
+
 export default function RoomsPage() {
+  const pathname = usePathname();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -31,7 +41,11 @@ export default function RoomsPage() {
   const [appliedType, setAppliedType] = useState("all");
   const [appliedAvailability, setAppliedAvailability] = useState("all");
 
-  useEffect(() => {
+  const loadRooms = useCallback((silent = false) => {
+    if (!silent) {
+      setLoading(true);
+      setError(false);
+    }
     api
       .get("/rooms/")
       .then((res) => {
@@ -39,10 +53,22 @@ export default function RoomsPage() {
         setLoading(false);
       })
       .catch(() => {
-        setError(true);
+        if (!silent) setError(true);
         setLoading(false);
       });
   }, []);
+
+  useEffect(() => {
+    loadRooms(false);
+  }, [pathname, loadRooms]);
+
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState === "visible") loadRooms(true);
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [loadRooms]);
 
   const roomTypes = useMemo(() => {
     const types = [...new Set(rooms.map((r) => r.room_type))];
@@ -58,9 +84,9 @@ export default function RoomsPage() {
     );
 
     if (appliedAvailability === "available") {
-      result = result.filter((room) => room.is_available);
+      result = result.filter((room) => isListedAsAvailable(room));
     } else if (appliedAvailability === "booked") {
-      result = result.filter((room) => !room.is_available);
+      result = result.filter((room) => !isListedAsAvailable(room));
     }
 
     if (appliedSort === "price-low") {
@@ -219,7 +245,7 @@ export default function RoomsPage() {
                   price={parseFloat(room.price)}
                   description={room.description}
                   image={room.image}
-                  isAvailable={room.is_available}
+                  isAvailable={isListedAsAvailable(room)}
                 />
               </motion.div>
             ))

@@ -35,7 +35,7 @@ function KhaltiReturnContent() {
         if (cancelled) return;
         if (data.ok) {
           setOk(true);
-          setMessage("Payment successful. Your booking is marked as paid.");
+          setMessage("Payment successful. Your booking is now confirmed.");
         } else {
           setOk(false);
           setMessage(data.message || "Payment was not completed.");

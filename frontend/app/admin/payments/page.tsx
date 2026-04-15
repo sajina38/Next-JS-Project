@@ -18,6 +18,20 @@ interface BookingPaymentRow {
   status: string;
 }
 
+interface BookingPaymentDetail extends BookingPaymentRow {
+  user: number;
+  guests: number;
+  adults: number;
+  children: number;
+  guest_email: string;
+  guest_phone: string;
+  guest_country?: string;
+  arrival_time?: string | null;
+  special_requests?: string;
+  id_photo?: string | null;
+  created_at: string;
+}
+
 const METHOD_LABELS: Record<string, string> = {
   prepay: "Pre-payment (bank transfer)",
   "pay-at-checkin": "Pay at check-in",
@@ -31,8 +45,7 @@ const STAY_STATUS_BADGE: Record<string, string> = {
   pending: "bg-amber-50 text-amber-800 border border-amber-100",
   confirmed: "bg-emerald-50 text-emerald-800 border border-emerald-100",
   cancelled: "bg-stone-100 text-stone-600 border border-stone-200",
-  "checked-in": "bg-sky-50 text-sky-800 border border-sky-100",
-  "checked-out": "bg-violet-50 text-violet-800 border border-violet-100",
+  checkout: "bg-violet-50 text-violet-800 border border-violet-100",
 };
 
 const PAYMENT_STATUS_BADGE: Record<string, string> = {
@@ -91,6 +104,8 @@ export default function AdminPaymentsPage() {
   const [search, setSearch] = useState("");
   const [payFilter, setPayFilter] = useState<"all" | "paid" | "unpaid">("all");
   const [modal, setModal] = useState<BookingPaymentRow | null>(null);
+  const [viewDetail, setViewDetail] = useState<BookingPaymentDetail | null>(null);
+  const [viewLoading, setViewLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(() => {
@@ -154,8 +169,23 @@ export default function AdminPaymentsPage() {
       await api.delete(`/bookings/${id}/`);
       setRows((prev) => prev.filter((r) => r.id !== id));
       setModal((m) => (m?.id === id ? null : m));
+      setViewDetail((v) => (v?.id === id ? null : v));
     } catch {
       alert("Could not delete booking.");
+    }
+  }
+
+  async function openPaymentView(id: number) {
+    setModal(null);
+    setViewLoading(true);
+    setViewDetail(null);
+    try {
+      const { data } = await api.get<BookingPaymentDetail>(`/bookings/${id}/`);
+      setViewDetail(data);
+    } catch {
+      alert("Could not load booking details.");
+    } finally {
+      setViewLoading(false);
     }
   }
 
@@ -223,8 +253,8 @@ export default function AdminPaymentsPage() {
                   <th className="px-4 py-3 font-semibold">Amount</th>
                   <th className="px-4 py-3 font-semibold">Payment</th>
                   <th className="px-4 py-3 font-semibold">Method</th>
-                  <th scope="col" className="px-4 py-3 w-[88px]">
-                    <span className="sr-only">Edit or delete</span>
+                  <th scope="col" className="px-4 py-3 w-[120px]">
+                    <span className="sr-only">View, edit, or delete</span>
                   </th>
                 </tr>
               </thead>
@@ -275,7 +305,26 @@ export default function AdminPaymentsPage() {
                       <div className="flex items-center gap-1">
                         <button
                           type="button"
-                          onClick={() => setModal(r)}
+                          onClick={() => void openPaymentView(r.id)}
+                          title="View details"
+                          aria-label="View payment details"
+                          className="shrink-0 p-1.5 rounded-md text-stone-600 hover:bg-stone-100 border border-transparent hover:border-stone-200 transition-colors"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"
+                            />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setViewDetail(null);
+                            setModal(r);
+                          }}
                           title="Edit payment"
                           aria-label="Edit payment"
                           className="shrink-0 p-1.5 rounded-md text-emerald-700 hover:bg-emerald-50 border border-transparent hover:border-emerald-100 transition-colors"
@@ -315,6 +364,117 @@ export default function AdminPaymentsPage() {
           <p className="px-5 py-10 text-center text-stone-500 text-sm">No bookings match your filters.</p>
         )}
       </div>
+
+      {(viewLoading || viewDetail) && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 border border-stone-200 my-8 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-bold text-stone-900 mb-1">
+              {viewLoading ? "Loading…" : `Payment · booking #${viewDetail?.id}`}
+            </h3>
+            {!viewLoading && viewDetail && (
+              <>
+                <p className="text-sm text-stone-500 mb-4">Guest contact and stay details for this charge.</p>
+                <dl className="space-y-3 text-sm border-t border-stone-100 pt-4">
+                  <div className="grid grid-cols-[8rem_1fr] gap-2">
+                    <dt className="text-stone-500 font-medium">Account</dt>
+                    <dd className="text-stone-900 break-all">{viewDetail.username}</dd>
+                  </div>
+                  <div className="grid grid-cols-[8rem_1fr] gap-2">
+                    <dt className="text-stone-500 font-medium">Guest</dt>
+                    <dd className="text-stone-900">{viewDetail.guest_name || "—"}</dd>
+                  </div>
+                  <div className="grid grid-cols-[8rem_1fr] gap-2">
+                    <dt className="text-stone-500 font-medium">Email</dt>
+                    <dd className="text-stone-900 break-all">{viewDetail.guest_email || "—"}</dd>
+                  </div>
+                  <div className="grid grid-cols-[8rem_1fr] gap-2">
+                    <dt className="text-stone-500 font-medium">Phone</dt>
+                    <dd className="text-stone-900">{viewDetail.guest_phone || "—"}</dd>
+                  </div>
+                  <div className="grid grid-cols-[8rem_1fr] gap-2">
+                    <dt className="text-stone-500 font-medium">Country</dt>
+                    <dd className="text-stone-900">{viewDetail.guest_country || "—"}</dd>
+                  </div>
+                  <div className="grid grid-cols-[8rem_1fr] gap-2">
+                    <dt className="text-stone-500 font-medium">Room</dt>
+                    <dd className="text-stone-900">
+                      #{viewDetail.room_number}
+                      {viewDetail.room_type || viewDetail.room_name
+                        ? ` · ${viewDetail.room_type || viewDetail.room_name}`
+                        : ""}
+                    </dd>
+                  </div>
+                  <div className="grid grid-cols-[8rem_1fr] gap-2">
+                    <dt className="text-stone-500 font-medium">Dates</dt>
+                    <dd className="text-stone-900 tabular-nums">
+                      {viewDetail.check_in} → {viewDetail.check_out}
+                    </dd>
+                  </div>
+                  <div className="grid grid-cols-[8rem_1fr] gap-2">
+                    <dt className="text-stone-500 font-medium">Guests</dt>
+                    <dd className="text-stone-900">
+                      {viewDetail.guests} ({viewDetail.adults} adults, {viewDetail.children} children)
+                    </dd>
+                  </div>
+                  <div className="grid grid-cols-[8rem_1fr] gap-2">
+                    <dt className="text-stone-500 font-medium">Stay status</dt>
+                    <dd className="text-stone-900 capitalize">{(viewDetail.status || "—").replace(/-/g, " ")}</dd>
+                  </div>
+                  <div className="grid grid-cols-[8rem_1fr] gap-2">
+                    <dt className="text-stone-500 font-medium">Amount</dt>
+                    <dd className="text-stone-900 font-semibold tabular-nums">{formatAmountDisplay(viewDetail.total_amount)}</dd>
+                  </div>
+                  <div className="grid grid-cols-[8rem_1fr] gap-2">
+                    <dt className="text-stone-500 font-medium">Payment</dt>
+                    <dd className="text-stone-900 capitalize">
+                      {(viewDetail.payment_status || "unpaid").replace(/-/g, " ")} · {methodLabel(viewDetail.payment_method)}
+                    </dd>
+                  </div>
+                  <div className="grid grid-cols-[8rem_1fr] gap-2">
+                    <dt className="text-stone-500 font-medium">Arrival</dt>
+                    <dd className="text-stone-900">{viewDetail.arrival_time || "—"}</dd>
+                  </div>
+                  <div className="grid grid-cols-[8rem_1fr] gap-2">
+                    <dt className="text-stone-500 font-medium">Notes</dt>
+                    <dd className="text-stone-900 whitespace-pre-wrap">{viewDetail.special_requests || "—"}</dd>
+                  </div>
+                  <div className="grid grid-cols-[8rem_1fr] gap-2">
+                    <dt className="text-stone-500 font-medium">Booked</dt>
+                    <dd className="text-stone-900 text-xs">{viewDetail.created_at}</dd>
+                  </div>
+                  {viewDetail.id_photo ? (
+                    <div className="col-span-full pt-2">
+                      <dt className="text-stone-500 font-medium text-sm mb-2">ID document</dt>
+                      <dd>
+                        <a
+                          href={viewDetail.id_photo}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-emerald-700 text-sm font-medium hover:underline"
+                        >
+                          Open uploaded file
+                        </a>
+                      </dd>
+                    </div>
+                  ) : null}
+                </dl>
+                <button
+                  type="button"
+                  onClick={() => setViewDetail(null)}
+                  className="mt-6 w-full py-2.5 rounded-lg border border-stone-200 text-sm font-medium text-stone-700 hover:bg-stone-50"
+                >
+                  Close
+                </button>
+              </>
+            )}
+            {viewLoading && (
+              <div className="py-12 flex justify-center">
+                <div className="w-8 h-8 border-4 border-stone-200 border-t-emerald-700 rounded-full animate-spin" />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {modal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 overflow-y-auto">

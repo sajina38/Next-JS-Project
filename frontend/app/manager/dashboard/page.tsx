@@ -32,8 +32,7 @@ const BOOKING_STATUS: Record<string, string> = {
   pending: "bg-amber-50 text-amber-800",
   confirmed: "bg-emerald-50 text-emerald-800",
   cancelled: "bg-stone-100 text-stone-600",
-  "checked-in": "bg-sky-50 text-sky-800",
-  "checked-out": "bg-violet-50 text-violet-800",
+  checkout: "bg-violet-50 text-violet-800",
 };
 
 const ROOM_STATUS_BADGE: Record<string, string> = {

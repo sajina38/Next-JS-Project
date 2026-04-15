@@ -147,7 +147,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         </div>
       </aside>
 
-      <main className="flex-1 overflow-auto min-h-screen">{children}</main>
+      <main className="flex-1 overflow-auto min-h-screen bg-stone-100">{children}</main>
     </div>
   );
 }

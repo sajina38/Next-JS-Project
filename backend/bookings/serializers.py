@@ -1,13 +1,27 @@
 from datetime import date
+from decimal import Decimal
 
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db import transaction
 from rest_framework import serializers
 
 from rooms.models import Room
 
-from .models import Booking
+from .loyalty import (
+    apply_user_loyalty_redemption_if_requested,
+    redemption_discount_and_points,
+)
+from .models import Booking, validate_booking_status_transition
+from .room_sync import room_has_schedule_blocking_conflict
 
 User = get_user_model()
+
+
+def _booking_gross_total(room, check_in, check_out) -> Decimal:
+    nights = (check_out - check_in).days
+    nights = max(nights, 1)
+    return (room.price * Decimal(nights)).quantize(Decimal("0.01"))
 
 
 class BookingSerializer(serializers.ModelSerializer):
@@ -15,6 +29,7 @@ class BookingSerializer(serializers.ModelSerializer):
     room_name = serializers.CharField(source="room.name", read_only=True)
     room_type = serializers.CharField(source="room.room_type", read_only=True)
     username = serializers.CharField(source="user.username", read_only=True)
+    redeem_loyalty = serializers.BooleanField(required=False, default=False, write_only=True)
 
     class Meta:
         model = Booking
@@ -41,20 +56,56 @@ class BookingSerializer(serializers.ModelSerializer):
             "payment_method",
             "payment_status",
             "total_amount",
+            "loyalty_points_redeemed",
+            "points_added",
             "status",
             "created_at",
+            "redeem_loyalty",
         ]
-        read_only_fields = ["id", "user", "status", "created_at", "payment_status", "total_amount"]
+        read_only_fields = [
+            "id",
+            "user",
+            "status",
+            "created_at",
+            "payment_status",
+            "total_amount",
+            "loyalty_points_redeemed",
+            "points_added",
+        ]
 
+    @transaction.atomic
     def create(self, validated_data):
-        # Guest self-service: confirmed immediately. Staff-created rows use StaffBookingCreateSerializer (pending).
+        redeem = validated_data.pop("redeem_loyalty", False)
+        request = self.context.get("request")
+        merged_user = validated_data.pop("user", None)
+        if request is not None:
+            u = getattr(request, "user", None)
+            user = u if u and u.is_authenticated else merged_user
+        else:
+            user = merged_user
+        if not user or not user.is_authenticated:
+            raise serializers.ValidationError("Authentication required.")
+        room = validated_data["room"]
+        check_in = validated_data["check_in"]
+        check_out = validated_data["check_out"]
+        gross = _booking_gross_total(room, check_in, check_out)
+        final_total, redeemed = apply_user_loyalty_redemption_if_requested(user, gross, redeem)
+        if redeem and redeemed == 0:
+            raise serializers.ValidationError(
+                {
+                    "redeem_loyalty": (
+                        "Loyalty redemption could not be applied. You need at least 100 points and "
+                        "a pre-discount total of at least Rs. 100."
+                    ),
+                }
+            )
         booking = Booking.objects.create(
-            **validated_data, status=Booking.Status.CONFIRMED
+            **validated_data,
+            user=user,
+            status=Booking.Status.PENDING,
+            total_amount=final_total,
+            loyalty_points_redeemed=redeemed,
         )
-        nights = (booking.check_out - booking.check_in).days
-        nights = max(nights, 1)
-        booking.total_amount = booking.room.price * nights
-        booking.save(update_fields=["total_amount"])
         return booking
 
     def validate(self, data):
@@ -68,6 +119,16 @@ class BookingSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({"check_out": "Check-out must be after check-in."})
 
         room = data.get("room")
+        if room and check_in and check_out:
+            if room_has_schedule_blocking_conflict(room, check_in, check_out):
+                raise serializers.ValidationError(
+                    {
+                        "room": (
+                            "This room is already reserved for part of those dates. "
+                            "Try other dates or pick another room."
+                        ),
+                    }
+                )
         if room and room.room_status != Room.RoomStatus.AVAILABLE:
             raise serializers.ValidationError({"room": "This room is currently not available."})
 
@@ -75,6 +136,21 @@ class BookingSerializer(serializers.ModelSerializer):
             if data["guests"] > room.capacity:
                 raise serializers.ValidationError(
                     {"guests": f"This room supports a maximum of {room.capacity} guests."}
+                )
+
+        request = self.context.get("request")
+        if data.get("redeem_loyalty") and request and request.user.is_authenticated and room and check_in and check_out:
+            gross = _booking_gross_total(room, check_in, check_out)
+            request.user.refresh_from_db()
+            _, pts = redemption_discount_and_points(request.user.loyalty_points, gross)
+            if pts <= 0:
+                raise serializers.ValidationError(
+                    {
+                        "redeem_loyalty": (
+                            "You need at least 100 points and a booking total of at least Rs. 100 "
+                            "before discount to use loyalty credit."
+                        ),
+                    }
                 )
 
         return data
@@ -117,6 +193,12 @@ class AdminBookingUpdateSerializer(serializers.ModelSerializer):
         allowed = {c.value for c in Booking.Status}
         if value not in allowed:
             raise serializers.ValidationError("Invalid status.")
+        if self.instance:
+            try:
+                validate_booking_status_transition(self.instance.status, value)
+            except DjangoValidationError as e:
+                msg = e.messages[0] if e.messages else "Invalid status transition."
+                raise serializers.ValidationError(msg) from e
         return value
 
     def validate_payment_status(self, value):
@@ -154,6 +236,8 @@ class AdminBookingUpdateSerializer(serializers.ModelSerializer):
 class StaffBookingCreateSerializer(serializers.ModelSerializer):
     """Admin/manager: create a booking for a customer account (walk-in / phone booking)."""
 
+    redeem_loyalty = serializers.BooleanField(required=False, default=False, write_only=True)
+
     class Meta:
         model = Booking
         fields = (
@@ -170,6 +254,7 @@ class StaffBookingCreateSerializer(serializers.ModelSerializer):
             "guest_country",
             "payment_method",
             "special_requests",
+            "redeem_loyalty",
         )
 
     def validate_user(self, user):
@@ -189,6 +274,15 @@ class StaffBookingCreateSerializer(serializers.ModelSerializer):
         room = data.get("room")
         guests = data.get("guests", 1)
         if room:
+            if check_in and check_out and room_has_schedule_blocking_conflict(room, check_in, check_out):
+                raise serializers.ValidationError(
+                    {
+                        "room": (
+                            "This room is already reserved for part of those dates. "
+                            "Try other dates or pick another room."
+                        ),
+                    }
+                )
             if room.room_status != Room.RoomStatus.AVAILABLE:
                 raise serializers.ValidationError(
                     {"room": "This room is not available for new bookings."}
@@ -197,15 +291,44 @@ class StaffBookingCreateSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     {"guests": f"This room supports a maximum of {room.capacity} guests."}
                 )
+        cust = data.get("user")
+        if data.get("redeem_loyalty") and cust and room and check_in and check_out:
+            gross = _booking_gross_total(room, check_in, check_out)
+            _, pts = redemption_discount_and_points(cust.loyalty_points, gross)
+            if pts <= 0:
+                raise serializers.ValidationError(
+                    {
+                        "redeem_loyalty": (
+                            "Customer needs at least 100 points and a booking total of at least Rs. 100 "
+                            "before discount to redeem loyalty credit."
+                        ),
+                    }
+                )
         return data
 
+    @transaction.atomic
     def create(self, validated_data):
-        # Phone / walk-in: pending until staff confirms payment or arrival in dashboard.
-        booking = Booking.objects.create(**validated_data, status=Booking.Status.PENDING)
-        nights = (booking.check_out - booking.check_in).days
-        nights = max(nights, 1)
-        booking.total_amount = booking.room.price * nights
-        booking.save(update_fields=["total_amount"])
+        redeem = validated_data.pop("redeem_loyalty", False)
+        target = validated_data["user"]
+        room = validated_data["room"]
+        check_in = validated_data["check_in"]
+        check_out = validated_data["check_out"]
+        gross = _booking_gross_total(room, check_in, check_out)
+        final_total, redeemed = apply_user_loyalty_redemption_if_requested(target, gross, redeem)
+        if redeem and redeemed == 0:
+            raise serializers.ValidationError(
+                {
+                    "redeem_loyalty": (
+                        "Loyalty redemption could not be applied. Refresh customer points and try again."
+                    ),
+                }
+            )
+        booking = Booking.objects.create(
+            **validated_data,
+            status=Booking.Status.PENDING,
+            total_amount=final_total,
+            loyalty_points_redeemed=redeemed,
+        )
         return booking
 
 

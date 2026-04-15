@@ -26,6 +26,31 @@ const STATUS_BADGE: Record<RoomStatus, string> = {
 
 const ROOM_NUMBER_PATTERN = /^\d{1,10}$/;
 
+function formatRoomSaveError(err: unknown, fallback: string): string {
+  const ax = err as {
+    response?: { data?: string | Record<string, unknown> };
+  };
+  const d = ax.response?.data;
+  if (typeof d === "string" && d.trim()) return d.trim();
+  if (d && typeof d === "object" && !Array.isArray(d)) {
+    const lines: string[] = [];
+    const detail = (d as { detail?: unknown }).detail;
+    if (typeof detail === "string") lines.push(detail);
+    else if (Array.isArray(detail)) {
+      for (const item of detail) {
+        if (typeof item === "string") lines.push(item);
+      }
+    }
+    for (const [k, v] of Object.entries(d)) {
+      if (k === "detail") continue;
+      if (Array.isArray(v)) lines.push(`${k}: ${v.map(String).join(" ")}`);
+      else if (typeof v === "string") lines.push(`${k}: ${v}`);
+    }
+    if (lines.length) return lines.join("\n");
+  }
+  return fallback;
+}
+
 function TypeCell({ r }: { r: AdminRoom }) {
   const displayName = (r.name || "").trim();
   if (displayName) {
@@ -59,6 +84,7 @@ export default function AdminRoomsPage() {
   const [formError, setFormError] = useState<string | null>(null);
 
   const [editRoom, setEditRoom] = useState<AdminRoom | null>(null);
+  const [viewRoom, setViewRoom] = useState<AdminRoom | null>(null);
   const [editForm, setEditForm] = useState({
     room_number: "",
     room_type: "",
@@ -69,6 +95,8 @@ export default function AdminRoomsPage() {
     room_status: "available" as RoomStatus,
   });
   const [editSaving, setEditSaving] = useState(false);
+  const [addPhotoFile, setAddPhotoFile] = useState<File | null>(null);
+  const [editPhotoFile, setEditPhotoFile] = useState<File | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -78,9 +106,24 @@ export default function AdminRoomsPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  const silentReload = useCallback(() => {
+    api
+      .get("/admin/rooms/")
+      .then((res) => setRooms(res.data))
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState === "visible") silentReload();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [silentReload]);
 
   const types = useMemo(() => {
     const s = new Set(rooms.map((r) => r.room_type).filter(Boolean));
@@ -104,6 +147,8 @@ export default function AdminRoomsPage() {
   }, [rooms, search, typeFilter, statusFilter]);
 
   function openEdit(r: AdminRoom) {
+    setViewRoom(null);
+    setEditPhotoFile(null);
     setEditRoom(r);
     setEditForm({
       room_number: r.room_number,
@@ -126,23 +171,33 @@ export default function AdminRoomsPage() {
     }
     setEditSaving(true);
     try {
-      const { data } = await api.patch(`/admin/rooms/${editRoom.id}/`, {
-        room_number: num,
-        room_type: editForm.room_type.trim(),
-        name: editForm.name.trim() || editForm.room_type.trim(),
-        description: editForm.description.trim(),
-        price: editForm.price,
-        capacity: parseInt(editForm.capacity, 10) || 2,
-        room_status: editForm.room_status,
-      });
+      const fd = new FormData();
+      fd.append("room_number", num);
+      fd.append("room_type", editForm.room_type.trim());
+      fd.append("name", editForm.name.trim() || editForm.room_type.trim());
+      fd.append("description", editForm.description.trim());
+      fd.append("price", editForm.price);
+      fd.append("capacity", String(parseInt(editForm.capacity, 10) || 2));
+      fd.append("room_status", editForm.room_status);
+      if (editPhotoFile) {
+        fd.append("photo", editPhotoFile);
+      }
+      const { data } = await api.patch(`/admin/rooms/${editRoom.id}/`, fd);
       setRooms((prev) =>
         prev
           .map((r) => (r.id === editRoom.id ? { ...r, ...data } : r))
           .sort((a, b) => a.room_number.localeCompare(b.room_number))
       );
       setEditRoom(null);
-    } catch {
-      alert("Could not save room. Check values and room number uniqueness.");
+      setEditPhotoFile(null);
+      setViewRoom((vr) => (vr?.id === editRoom.id ? null : vr));
+    } catch (err: unknown) {
+      alert(
+        formatRoomSaveError(
+          err,
+          "Could not save room. Check values, photo, and that the room number is unique.",
+        ),
+      );
     } finally {
       setEditSaving(false);
     }
@@ -154,6 +209,7 @@ export default function AdminRoomsPage() {
       await api.delete(`/admin/rooms/${id}/`);
       setRooms((prev) => prev.filter((r) => r.id !== id));
       setEditRoom((er) => (er?.id === id ? null : er));
+      setViewRoom((vr) => (vr?.id === id ? null : vr));
     } catch {
       alert("Could not delete room.");
     }
@@ -169,18 +225,21 @@ export default function AdminRoomsPage() {
     }
     setSaving(true);
     try {
-      const payload = {
-        room_number: num,
-        room_type: form.room_type.trim(),
-        name: form.name.trim() || form.room_type.trim(),
-        description: form.description.trim(),
-        price: form.price,
-        capacity: parseInt(form.capacity, 10) || 2,
-        room_status: form.room_status,
-      };
-      const { data } = await api.post("/admin/rooms/", payload);
+      const fd = new FormData();
+      fd.append("room_number", num);
+      fd.append("room_type", form.room_type.trim());
+      fd.append("name", form.name.trim() || form.room_type.trim());
+      fd.append("description", form.description.trim());
+      fd.append("price", form.price);
+      fd.append("capacity", String(parseInt(form.capacity, 10) || 2));
+      fd.append("room_status", form.room_status);
+      if (addPhotoFile) {
+        fd.append("photo", addPhotoFile);
+      }
+      const { data } = await api.post("/admin/rooms/", fd);
       setRooms((prev) => [...prev, data].sort((a, b) => a.room_number.localeCompare(b.room_number)));
       setAddModalOpen(false);
+      setAddPhotoFile(null);
       setForm({
         room_number: "",
         room_type: "",
@@ -191,13 +250,11 @@ export default function AdminRoomsPage() {
         room_status: "available",
       });
     } catch (err: unknown) {
-      const ax = err as { response?: { data?: Record<string, string | string[]> } };
-      const d = ax.response?.data;
-      const rn = d?.room_number;
-      const msg = Array.isArray(rn) ? rn[0] : typeof rn === "string" ? rn : null;
       alert(
-        msg ||
-          "Could not create room. Check the room number is unique and the price is valid."
+        formatRoomSaveError(
+          err,
+          "Could not create room. Check the room number is unique and the price is valid.",
+        ),
       );
     } finally {
       setSaving(false);
@@ -214,7 +271,9 @@ export default function AdminRoomsPage() {
         <button
           type="button"
           onClick={() => {
+            setViewRoom(null);
             setFormError(null);
+            setAddPhotoFile(null);
             setAddModalOpen(true);
           }}
           className="inline-flex items-center justify-center gap-2 bg-emerald-700 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-emerald-800 transition-colors shadow-sm shadow-emerald-700/20 shrink-0"
@@ -281,11 +340,8 @@ export default function AdminRoomsPage() {
                   <th className="px-5 py-3 font-semibold">Type</th>
                   <th className="px-5 py-3 font-semibold">Price</th>
                   <th className="px-5 py-3 font-semibold">Status</th>
-                  <th scope="col" className="px-5 py-3 w-[56px]">
-                    <span className="sr-only">Edit</span>
-                  </th>
-                  <th scope="col" className="px-5 py-3 w-[56px]">
-                    <span className="sr-only">Delete</span>
+                  <th scope="col" className="px-5 py-3 w-[120px]">
+                    <span className="sr-only">View, edit, or delete</span>
                   </th>
                 </tr>
               </thead>
@@ -307,37 +363,53 @@ export default function AdminRoomsPage() {
                       </span>
                     </td>
                     <td className="px-5 py-3.5">
-                      <button
-                        type="button"
-                        onClick={() => openEdit(r)}
-                        title="Edit room"
-                        aria-label="Edit room"
-                        className="p-1.5 rounded-md text-emerald-700 hover:bg-emerald-50 border border-transparent hover:border-emerald-100 transition-colors"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"
-                          />
-                        </svg>
-                      </button>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(r.id)}
-                        className="p-1.5 rounded-md text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-100 transition-colors"
-                        aria-label="Delete room"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
-                          />
-                        </svg>
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setViewRoom(r)}
+                          title="View room details"
+                          aria-label="View room details"
+                          className="p-1.5 rounded-md text-stone-600 hover:bg-stone-100 border border-transparent hover:border-stone-200 transition-colors"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"
+                            />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openEdit(r)}
+                          title="Edit room"
+                          aria-label="Edit room"
+                          className="p-1.5 rounded-md text-emerald-700 hover:bg-emerald-50 border border-transparent hover:border-emerald-100 transition-colors"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"
+                            />
+                          </svg>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(r.id)}
+                          className="p-1.5 rounded-md text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-100 transition-colors"
+                          aria-label="Delete room"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
+                            />
+                          </svg>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -346,6 +418,59 @@ export default function AdminRoomsPage() {
           </div>
         )}
       </div>
+
+      {viewRoom && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 border border-stone-200 my-8 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-bold text-stone-900 mb-1">Room {viewRoom.room_number}</h3>
+            <p className="text-sm text-stone-500 mb-4">Full listing details (read-only).</p>
+            {viewRoom.image ? (
+              <div className="mb-4 rounded-xl overflow-hidden border border-stone-100 aspect-[16/10] bg-stone-100">
+                <img src={viewRoom.image} alt="" className="w-full h-full object-cover" />
+              </div>
+            ) : null}
+            <dl className="space-y-3 text-sm border-t border-stone-100 pt-4">
+              <div className="grid grid-cols-[7rem_1fr] gap-2">
+                <dt className="text-stone-500 font-medium">Number</dt>
+                <dd className="text-stone-900 font-semibold tabular-nums">{viewRoom.room_number}</dd>
+              </div>
+              <div className="grid grid-cols-[7rem_1fr] gap-2">
+                <dt className="text-stone-500 font-medium">Type</dt>
+                <dd className="text-stone-900">{viewRoom.room_type}</dd>
+              </div>
+              <div className="grid grid-cols-[7rem_1fr] gap-2">
+                <dt className="text-stone-500 font-medium">Display name</dt>
+                <dd className="text-stone-900">{(viewRoom.name || "").trim() || "—"}</dd>
+              </div>
+              <div className="grid grid-cols-[7rem_1fr] gap-2">
+                <dt className="text-stone-500 font-medium">Status</dt>
+                <dd className="text-stone-900 capitalize">{viewRoom.room_status}</dd>
+              </div>
+              <div className="grid grid-cols-[7rem_1fr] gap-2">
+                <dt className="text-stone-500 font-medium">Price / night</dt>
+                <dd className="text-stone-900 tabular-nums">NPR {viewRoom.price}</dd>
+              </div>
+              <div className="grid grid-cols-[7rem_1fr] gap-2">
+                <dt className="text-stone-500 font-medium">Capacity</dt>
+                <dd className="text-stone-900">{viewRoom.capacity} guests</dd>
+              </div>
+              <div className="col-span-full pt-1">
+                <dt className="text-stone-500 font-medium text-sm mb-1">Description</dt>
+                <dd className="text-stone-800 whitespace-pre-wrap text-sm leading-relaxed">
+                  {(viewRoom.description || "").trim() || "—"}
+                </dd>
+              </div>
+            </dl>
+            <button
+              type="button"
+              onClick={() => setViewRoom(null)}
+              className="mt-6 w-full py-2.5 rounded-lg border border-stone-200 text-sm font-medium text-stone-700 hover:bg-stone-50"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
 
       {addModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 overflow-y-auto">
@@ -420,11 +545,25 @@ export default function AdminRoomsPage() {
                 <option value="maintenance">Maintenance</option>
                 <option value="occupied">Occupied</option>
               </select>
+              <div>
+                <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wide mb-1.5">
+                  Room photo (optional)
+                </label>
+                <input
+                  key={addModalOpen ? "add-open" : "add-closed"}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  onChange={(e) => setAddPhotoFile(e.target.files?.[0] ?? null)}
+                  className="w-full text-sm text-stone-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-emerald-50 file:text-emerald-800 hover:file:bg-emerald-100"
+                />
+                <p className="text-xs text-stone-500 mt-1">JPEG, PNG, WebP, or GIF.</p>
+              </div>
               <div className="flex gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => {
                     setFormError(null);
+                    setAddPhotoFile(null);
                     setAddModalOpen(false);
                   }}
                   className="flex-1 py-2 rounded-lg border border-stone-200 text-sm font-medium"
@@ -510,10 +649,28 @@ export default function AdminRoomsPage() {
                 <option value="maintenance">Maintenance</option>
                 <option value="occupied">Occupied</option>
               </select>
+              <div>
+                <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wide mb-1.5">
+                  Replace room photo (optional)
+                </label>
+                {editRoom.image && !editPhotoFile && (
+                  <p className="text-xs text-stone-500 mb-2">Current photo is kept unless you choose a new file.</p>
+                )}
+                <input
+                  key={editRoom.id}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  onChange={(e) => setEditPhotoFile(e.target.files?.[0] ?? null)}
+                  className="w-full text-sm text-stone-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-emerald-50 file:text-emerald-800 hover:file:bg-emerald-100"
+                />
+              </div>
               <div className="flex gap-2 pt-4">
                 <button
                   type="button"
-                  onClick={() => setEditRoom(null)}
+                  onClick={() => {
+                    setEditPhotoFile(null);
+                    setEditRoom(null);
+                  }}
                   disabled={editSaving}
                   className="flex-1 py-2.5 rounded-lg border border-stone-200 text-sm font-medium text-stone-700 hover:bg-stone-50"
                 >

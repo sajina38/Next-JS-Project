@@ -7,7 +7,24 @@ const api = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
+function stripContentTypeForFormData(
+  headers: typeof api.defaults.headers.common,
+) {
+  if (!headers || typeof headers !== "object") return;
+  const h = headers as { delete?: (k: string) => void } & Record<string, unknown>;
+  if (typeof h.delete === "function") {
+    h.delete("Content-Type");
+    h.delete("content-type");
+  } else {
+    delete h["Content-Type"];
+    delete h["content-type"];
+  }
+}
+
 api.interceptors.request.use((config) => {
+  if (config.data instanceof FormData) {
+    stripContentTypeForFormData(config.headers);
+  }
   if (typeof window !== "undefined") {
     const token = localStorage.getItem("access_token");
     if (token) {

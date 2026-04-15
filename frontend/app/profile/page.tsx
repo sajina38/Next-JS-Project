@@ -20,6 +20,7 @@ interface Booking {
   payment_method: string;
   payment_status?: string;
   total_amount?: string;
+  loyalty_points_redeemed?: number;
   guest_name?: string;
   guest_email?: string;
   guest_phone?: string;
@@ -41,6 +42,7 @@ interface ProfileData {
   country: string;
   gender: string;
   role: string;
+  loyalty_points: number;
   date_joined: string;
 }
 
@@ -56,8 +58,14 @@ const STATUS_STYLES: Record<string, string> = {
   pending: "bg-amber-50 text-amber-800 border border-amber-100",
   confirmed: "bg-emerald-50 text-emerald-800 border border-emerald-100",
   cancelled: "bg-red-50 text-red-700 border border-red-100",
-  "checked-in": "bg-sky-50 text-sky-800 border border-sky-100",
-  "checked-out": "bg-violet-50 text-violet-800 border border-violet-100",
+  checkout: "bg-violet-50 text-violet-800 border border-violet-100",
+};
+
+const BOOKING_STATUS_LABELS: Record<string, string> = {
+  pending: "Pending payment / confirmation",
+  confirmed: "Confirmed",
+  cancelled: "Cancelled",
+  checkout: "Stay completed",
 };
 
 const PAYMENT_STATUS_LABELS: Record<string, string> = {
@@ -72,26 +80,23 @@ const PAYMENT_LABELS: Record<string, string> = {
   khalti: "Online payment (Khalti)",
 };
 
-type Tab = "personal" | "security" | "bookings";
+type Tab = "personal" | "loyalty" | "security" | "bookings";
 
 function ProfileBookingsTab({
   bookings,
   loadingBookings,
   onCancelBooking,
+  loyaltyPoints,
 }: {
   bookings: Booking[];
   loadingBookings: boolean;
   onCancelBooking: (id: number) => void;
+  loyaltyPoints?: number;
 }) {
   const [openId, setOpenId] = useState<number | null>(null);
 
-  const active = bookings.filter(
-    (b) =>
-      b.status === "pending" ||
-      b.status === "confirmed" ||
-      b.status === "checked-in"
-  );
-  const history = bookings.filter((b) => b.status === "checked-out");
+  const active = bookings.filter((b) => b.status === "pending" || b.status === "confirmed");
+  const history = bookings.filter((b) => b.status === "checkout");
   const cancelled = bookings.filter((b) => b.status === "cancelled");
 
   function formatMoney(amount: string | undefined) {
@@ -142,11 +147,11 @@ function ProfileBookingsTab({
 
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-end lg:flex-col lg:items-end lg:shrink-0">
               <span
-                className={`inline-flex w-fit px-3 py-1 rounded-full text-xs font-semibold capitalize ${
+                className={`inline-flex w-fit px-3 py-1 rounded-full text-xs font-semibold ${
                   STATUS_STYLES[b.status] || "bg-gray-100 text-gray-700 border border-gray-200"
                 }`}
               >
-                {b.status.replace(/-/g, " ")}
+                {BOOKING_STATUS_LABELS[b.status] || b.status.replace(/-/g, " ")}
               </span>
               <div className="flex flex-wrap items-center gap-2">
                 <button
@@ -213,6 +218,12 @@ function ProfileBookingsTab({
                     }
                   />
                   <DetailField label="Total" value={formatMoney(b.total_amount)} />
+                  {(b.loyalty_points_redeemed ?? 0) > 0 ? (
+                    <DetailField
+                      label="Loyalty redeemed"
+                      value={`${b.loyalty_points_redeemed} pts (Rs. ${b.loyalty_points_redeemed} off)`}
+                    />
+                  ) : null}
                 </div>
               </section>
 
@@ -221,7 +232,9 @@ function ProfileBookingsTab({
                 <div className="grid gap-8 sm:grid-cols-2">
                   <DetailField
                     label="Reservation status"
-                    value={<span className="capitalize">{b.status.replace(/-/g, " ")}</span>}
+                    value={
+                      <span>{BOOKING_STATUS_LABELS[b.status] || b.status.replace(/-/g, " ")}</span>
+                    }
                   />
                   <DetailField label="Booked on" value={formatDateTime(b.created_at)} />
                 </div>
@@ -292,10 +305,15 @@ function ProfileBookingsTab({
 
   return (
     <div className="w-full">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mb-10 pb-6 border-b border-gray-100">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mb-10 pb-6 border-b border-stone-200">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">My bookings</h1>
-          
+          <p className="text-sm text-gray-600 mt-2">
+            <span className="font-semibold text-emerald-800 tabular-nums">{loyaltyPoints ?? 0}</span> loyalty points
+            <span className="text-gray-400"> · </span>
+            Open the <span className="font-medium text-gray-800">Loyalty</span> section in the sidebar for balance and
+            program rules.
+          </p>
         </div>
         <Link
           href="/rooms"
@@ -313,7 +331,7 @@ function ProfileBookingsTab({
           <div className="w-9 h-9 border-2 border-gray-200 border-t-emerald-600 rounded-full animate-spin" />
         </div>
       ) : bookings.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50/50 py-16 px-8 text-center">
+        <div className="rounded-2xl border border-dashed border-stone-300 bg-white/80 py-16 px-8 text-center shadow-sm">
           <p className="text-gray-600 mb-6">You have not made any bookings yet.</p>
           <Link
             href="/rooms"
@@ -331,8 +349,8 @@ function ProfileBookingsTab({
             showCancel
           />
           <BookingSection
-            title="Booking History"
-            description="Stays after check-out day are marked completed automatically."
+            title="Booking history"
+            description="Completed stays (checkout recorded by the hotel after your visit)."
             list={history}
           />
           <BookingSection title="Cancelled" description="Reservations you cancelled." list={cancelled} />
@@ -494,6 +512,19 @@ export default function ProfilePage() {
       ),
     },
     {
+      key: "loyalty",
+      label: "Loyalty",
+      icon: (
+        <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.563.563 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.563.563 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z"
+          />
+        </svg>
+      ),
+    },
+    {
       key: "security",
       label: "Login & Password",
       icon: (
@@ -514,24 +545,19 @@ export default function ProfilePage() {
   ];
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
-      {/* Top bar with hotel info */}
-      <div className="w-full bg-white border-b border-gray-100 px-6 py-2 flex items-center justify-between shrink-0">
-        <Link href="/">
-          <Image src="/logo.png" alt="Urban Boutique Hotel" width={48} height={48} className="object-contain" />
-        </Link>
-        <div className="hidden sm:flex items-center gap-1.5 text-xs text-gray-500">
-          <svg className="w-3.5 h-3.5 text-emerald-700 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="m9.69 18.933.003.001C9.89 19.02 10 19 10 19s.11.02.308-.066l.002-.001.006-.003.018-.008a5.741 5.741 0 0 0 .281-.14c.186-.096.446-.24.757-.433.62-.384 1.445-.966 2.274-1.765C15.302 14.988 17 12.493 17 9A7 7 0 1 0 3 9c0 3.492 1.698 5.988 3.355 7.584a13.731 13.731 0 0 0 2.274 1.765 11.842 11.842 0 0 0 .976.544l.062.029.018.008.006.003ZM10 11.25a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Z" clipRule="evenodd" />
-          </svg>
-          Baidam Road Lakeside, Khahare, Hallanchowk, 33700 Pokhara, Nepal
+    <div className="min-h-screen bg-stone-100 flex font-[var(--font-inter)]">
+      <div className="flex flex-1 min-h-0 w-full min-w-0">
+      {/* ── Desktop Sidebar (admin-style: branding in sidebar, full height) ── */}
+      <aside className="hidden md:flex flex-col w-64 shrink-0 sticky top-0 h-screen border-r border-stone-200 bg-white">
+        <div className="p-5 border-b border-stone-100">
+          <Link href="/" className="flex items-center gap-3">
+            <Image src="/logo.png" alt="Urban Boutique Hotel" width={44} height={44} className="object-contain" />
+            <div>
+              <p className="text-sm font-bold text-stone-900 leading-tight">Urban Boutique Hotel</p>
+            </div>
+          </Link>
         </div>
-      </div>
-
-      <div className="flex flex-1">
-      {/* ── Desktop Sidebar ── */}
-      <aside className="hidden md:flex flex-col w-[260px] shrink-0 sticky top-[52px] h-[calc(100vh-52px)] border-r border-gray-100 bg-white">
-        <div className="flex flex-col items-center pt-10 pb-8 px-6">
+        <div className="flex flex-col items-center pt-8 pb-6 px-6">
           <div className="relative mb-4">
             <div className="w-20 h-20 rounded-full bg-gray-50 border border-gray-200 text-gray-800 flex items-center justify-center text-xl font-bold">
               {initials}
@@ -579,8 +605,15 @@ export default function ProfilePage() {
         </div>
       </aside>
 
-      {/* ── Mobile Nav ── */}
-      <div className="md:hidden fixed top-0 inset-x-0 z-30 bg-white border-b border-gray-100 px-4 py-3 shadow-sm">
+      {/* ── Mobile Nav (branding strip like admin shell, no separate top bar) ── */}
+      <div className="md:hidden fixed top-0 inset-x-0 z-30 bg-white border-b border-stone-200 shadow-sm">
+        <div className="px-4 py-2.5 border-b border-stone-100">
+          <Link href="/" className="flex items-center gap-2.5 min-w-0">
+            <Image src="/logo.png" alt="Urban Boutique Hotel" width={36} height={36} className="object-contain shrink-0" />
+            <p className="text-xs font-bold text-stone-900 leading-tight truncate">Urban Boutique Hotel</p>
+          </Link>
+        </div>
+        <div className="px-4 py-3">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-full bg-gray-50 border border-gray-200 text-gray-800 flex items-center justify-center text-xs font-bold">
@@ -600,7 +633,7 @@ export default function ProfilePage() {
             <button
               key={item.key}
               onClick={() => setActiveTab(item.key)}
-              className={`flex-1 py-2 rounded-lg text-[11px] font-semibold transition-colors border ${
+              className={`flex-1 py-2 rounded-lg text-[10px] sm:text-[11px] font-semibold transition-colors border leading-tight ${
                 activeTab === item.key
                   ? "bg-gray-50 text-gray-900 border-gray-200"
                   : "text-gray-500 border-transparent hover:bg-gray-50"
@@ -610,10 +643,11 @@ export default function ProfilePage() {
             </button>
           ))}
         </div>
+        </div>
       </div>
 
-      {/* ── Main Content ── */}
-      <main className="flex-1 min-h-screen pt-28 md:pt-0 bg-white">
+      {/* ── Main Content (same light gray as admin dashboard; nav bars stay white) ── */}
+      <main className="flex-1 min-h-screen pt-[9.5rem] md:pt-0 bg-stone-100">
         <div className="max-w-4xl mx-auto px-6 sm:px-10 py-10 md:py-14">
 
           {/* ═══ PERSONAL INFORMATION TAB ═══ */}
@@ -650,7 +684,7 @@ export default function ProfilePage() {
                   </header>
 
                   <div className="space-y-6">
-                    <section className="rounded-2xl border border-gray-100 bg-gray-50/50 px-5 sm:px-8 py-6 sm:py-8">
+                    <section className="rounded-2xl border border-stone-200 bg-white shadow-sm px-5 sm:px-8 py-6 sm:py-8">
                       <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-5">Name</h2>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                         <div>
@@ -669,7 +703,7 @@ export default function ProfilePage() {
                       </div>
                     </section>
 
-                    <section className="rounded-2xl border border-gray-100 bg-gray-50/50 px-5 sm:px-8 py-6 sm:py-8">
+                    <section className="rounded-2xl border border-stone-200 bg-white shadow-sm px-5 sm:px-8 py-6 sm:py-8">
                       <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-5">Contact</h2>
                       <div className="grid grid-cols-1 gap-5 max-w-2xl">
                         <div>
@@ -687,7 +721,7 @@ export default function ProfilePage() {
                       </div>
                     </section>
 
-                    <section className="rounded-2xl border border-gray-100 bg-gray-50/50 px-5 sm:px-8 py-6 sm:py-8">
+                    <section className="rounded-2xl border border-stone-200 bg-white shadow-sm px-5 sm:px-8 py-6 sm:py-8">
                       <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-5">Profile</h2>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                         <div>
@@ -717,7 +751,7 @@ export default function ProfilePage() {
                       </div>
                     </section>
 
-                    <section className="rounded-2xl border border-gray-100 bg-gray-50/50 px-5 sm:px-8 py-6 sm:py-8">
+                    <section className="rounded-2xl border border-stone-200 bg-white shadow-sm px-5 sm:px-8 py-6 sm:py-8">
                       <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-5">Account</h2>
                       <div className="max-w-xl">
                         <p className="block text-sm font-medium text-gray-500 mb-2">Member since</p>
@@ -744,7 +778,7 @@ export default function ProfilePage() {
                   </header>
 
                   <div className="space-y-6">
-                    <section className="rounded-2xl border border-gray-100 bg-gray-50/50 px-5 sm:px-8 py-6 sm:py-8">
+                    <section className="rounded-2xl border border-stone-200 bg-white shadow-sm px-5 sm:px-8 py-6 sm:py-8">
                       <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-5">Name</h2>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                         <div>
@@ -766,7 +800,7 @@ export default function ProfilePage() {
                       </div>
                     </section>
 
-                    <section className="rounded-2xl border border-gray-100 bg-gray-50/50 px-5 sm:px-8 py-6 sm:py-8">
+                    <section className="rounded-2xl border border-stone-200 bg-white shadow-sm px-5 sm:px-8 py-6 sm:py-8">
                       <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-5">Contact</h2>
                       <div className="grid grid-cols-1 gap-5 max-w-2xl">
                         <div>
@@ -789,7 +823,7 @@ export default function ProfilePage() {
                       </div>
                     </section>
 
-                    <section className="rounded-2xl border border-gray-100 bg-gray-50/50 px-5 sm:px-8 py-6 sm:py-8">
+                    <section className="rounded-2xl border border-stone-200 bg-white shadow-sm px-5 sm:px-8 py-6 sm:py-8">
                       <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-5">Profile</h2>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                         <div>
@@ -865,6 +899,54 @@ export default function ProfilePage() {
             </>
           )}
 
+          {/* ═══ LOYALTY TAB ═══ */}
+          {activeTab === "loyalty" && (
+            <>
+              {loadingProfile ? (
+                <div className="flex justify-center py-20">
+                  <div className="w-8 h-8 border-4 border-gray-200 border-t-emerald-700 rounded-full animate-spin" />
+                </div>
+              ) : (
+                <>
+                  <header className="mb-8">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight font-serif">
+                      Loyalty rewards
+                    </h1>
+                    <p className="text-sm text-gray-500 mt-2 max-w-xl">
+                      Your Urban Rewards balance and how to earn and redeem points on confirmed stays.
+                    </p>
+                  </header>
+
+                  <div className="space-y-6">
+                    <section className="rounded-2xl border border-emerald-200/80 bg-white shadow-sm px-5 sm:px-8 py-6 sm:py-8">
+                      <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-3">Your balance</h2>
+                      <p className="text-3xl font-bold text-emerald-800 tabular-nums">
+                        {p?.loyalty_points ?? 0}{" "}
+                        <span className="text-lg font-semibold text-gray-600">points</span>
+                      </p>
+                    </section>
+
+                    <section className="rounded-2xl border border-stone-200 bg-white shadow-sm px-5 sm:px-8 py-6 sm:py-8">
+                      <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-3">Rules</h2>
+                      <p className="text-sm text-gray-600 leading-relaxed max-w-2xl">
+                        Earn 1 point per Rs. 50 spent on confirmed stays. Redeem in blocks of 100 points for Rs. 100 off
+                        your next booking (when your total is at least Rs. 100 before discount).
+                      </p>
+                    </section>
+
+                    <Link
+                      href="/loyalty"
+                      className="inline-flex items-center gap-2 text-sm font-semibold text-emerald-800 hover:text-emerald-950 hover:underline"
+                    >
+                      Read the full loyalty program
+                      <span aria-hidden>→</span>
+                    </Link>
+                  </div>
+                </>
+              )}
+            </>
+          )}
+
           {/* ═══ LOGIN & PASSWORD TAB ═══ */}
           {activeTab === "security" && (
             <>
@@ -878,8 +960,8 @@ export default function ProfilePage() {
                 </p>
               </header>
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 lg:gap-6">
-                <div className="rounded-2xl bg-gray-50 p-6 sm:p-7 flex flex-col">
+              <div className="flex flex-col gap-5 max-w-2xl">
+                <div className="rounded-2xl border border-stone-200 bg-white shadow-sm p-6 sm:p-7 flex flex-col">
                   <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-emerald-700 mb-4">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
@@ -892,7 +974,7 @@ export default function ProfilePage() {
                   </p>
                 </div>
 
-                <div className="rounded-2xl bg-gray-50 p-6 sm:p-7 flex flex-col">
+                <div className="rounded-2xl border border-stone-200 bg-white shadow-sm p-6 sm:p-7 flex flex-col">
                   <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-emerald-700 mb-4">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
@@ -900,15 +982,19 @@ export default function ProfilePage() {
                   </div>
                   <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Password</h2>
                   <p className="text-lg font-medium tracking-[0.25em] text-gray-800 mb-5">••••••••</p>
-                  <button
-                    type="button"
-                    className="mt-auto inline-flex justify-center items-center px-4 py-2.5 text-sm font-medium text-emerald-800 bg-emerald-100/80 hover:bg-emerald-100 rounded-lg transition-colors w-full sm:w-auto"
+                  <Link
+                    href={
+                      p?.email
+                        ? `/login/forgot-password?email=${encodeURIComponent(p.email)}`
+                        : "/login/forgot-password"
+                    }
+                    className="mt-auto inline-flex justify-center items-center px-4 py-2.5 text-sm font-medium text-emerald-800 bg-emerald-100/80 hover:bg-emerald-100 rounded-lg transition-colors w-full sm:w-fit"
                   >
                     Reset password
-                  </button>
+                  </Link>
                 </div>
 
-                <div className="rounded-2xl bg-gray-50 p-6 sm:p-7 flex flex-col lg:col-span-1">
+                <div className="rounded-2xl border border-stone-200 bg-white shadow-sm p-6 sm:p-7 flex flex-col">
                   <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-emerald-700 mb-4">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
@@ -938,6 +1024,7 @@ export default function ProfilePage() {
               bookings={bookings}
               loadingBookings={loadingBookings}
               onCancelBooking={cancelBooking}
+              loyaltyPoints={profile?.loyalty_points}
             />
           )}
         </div>

@@ -4,8 +4,10 @@ from .models import HotelSettings, Room
 
 
 class RoomSerializer(serializers.ModelSerializer):
-    image = serializers.SerializerMethodField()
-    is_available = serializers.BooleanField(read_only=True)
+    image = serializers.SerializerMethodField(read_only=True)
+    """Optional image file on create/update (multipart field name: ``photo``)."""
+    photo = serializers.ImageField(write_only=True, required=False)
+    is_available = serializers.SerializerMethodField(read_only=True)
 
     def validate_room_number(self, value):
         s = (value or "").strip()
@@ -26,9 +28,26 @@ class RoomSerializer(serializers.ModelSerializer):
             "price",
             "capacity",
             "image",
+            "photo",
             "room_status",
             "is_available",
         ]
+
+    def create(self, validated_data):
+        photo = validated_data.pop("photo", None)
+        room = super().create(validated_data)
+        if photo:
+            room.image = photo
+            room.save(update_fields=["image"])
+        return room
+
+    def update(self, instance, validated_data):
+        photo = validated_data.pop("photo", None)
+        room = super().update(instance, validated_data)
+        if photo:
+            room.image = photo
+            room.save(update_fields=["image"])
+        return room
 
     def get_image(self, obj):
         if obj.image:
@@ -37,6 +56,11 @@ class RoomSerializer(serializers.ModelSerializer):
                 return request.build_absolute_uri(obj.image.url)
             return obj.image.url
         return None
+
+    def get_is_available(self, obj):
+        # Model exposes ``is_available`` as a @property (no DB column); SerializerMethodField
+        # keeps JSON in sync with ``room_status`` after admin edits.
+        return bool(obj.is_available)
 
 
 class HotelSettingsSerializer(serializers.ModelSerializer):

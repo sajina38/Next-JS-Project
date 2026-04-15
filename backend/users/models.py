@@ -27,3 +27,4 @@ class User(AbstractUser):
         blank=True,
         default="",
     )
+    loyalty_points = models.PositiveIntegerField(default=0)

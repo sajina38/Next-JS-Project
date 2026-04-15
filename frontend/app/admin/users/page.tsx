@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import api from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 
 interface AdminUser {
   id: number;
@@ -11,6 +12,7 @@ interface AdminUser {
   is_active: boolean;
   first_name: string;
   last_name: string;
+  loyalty_points?: number;
 }
 
 const ROLE_BADGE: Record<string, string> = {
@@ -20,6 +22,7 @@ const ROLE_BADGE: Record<string, string> = {
 };
 
 export default function AdminUsersPage() {
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -34,6 +37,18 @@ export default function AdminUsersPage() {
     role: "customer",
   });
   const [saving, setSaving] = useState(false);
+  const [viewUser, setViewUser] = useState<AdminUser | null>(null);
+  const [editUser, setEditUser] = useState<AdminUser | null>(null);
+  const [editForm, setEditForm] = useState({
+    username: "",
+    email: "",
+    password: "",
+    first_name: "",
+    last_name: "",
+    role: "customer",
+    is_active: true,
+  });
+  const [editSaving, setEditSaving] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -67,6 +82,8 @@ export default function AdminUsersPage() {
     try {
       await api.delete(`/admin/users/${id}/`);
       setUsers((prev) => prev.filter((u) => u.id !== id));
+      setViewUser((v) => (v?.id === id ? null : v));
+      setEditUser((e) => (e?.id === id ? null : e));
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
       alert(msg || "Could not delete user.");
@@ -95,6 +112,57 @@ export default function AdminUsersPage() {
     }
   }
 
+  function openEdit(u: AdminUser) {
+    setViewUser(null);
+    setEditUser(u);
+    setEditForm({
+      username: u.username,
+      email: u.email,
+      password: "",
+      first_name: u.first_name || "",
+      last_name: u.last_name || "",
+      role: u.role,
+      is_active: u.is_active,
+    });
+  }
+
+  async function handleEditSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editUser) return;
+    setEditSaving(true);
+    try {
+      const payload: Record<string, string | boolean> = {
+        username: editForm.username.trim(),
+        email: editForm.email.trim(),
+        first_name: editForm.first_name.trim(),
+        last_name: editForm.last_name.trim(),
+        role: editForm.role,
+        is_active: editForm.is_active,
+      };
+      const pwd = editForm.password.trim();
+      if (pwd.length > 0) {
+        payload.password = pwd;
+      }
+      const { data } = await api.patch(`/admin/users/${editUser.id}/`, payload);
+      setUsers((prev) => prev.map((u) => (u.id === editUser.id ? { ...u, ...data } : u)));
+      setEditUser(null);
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: Record<string, unknown> | { detail?: string } } };
+      const d = err.response?.data;
+      const detail =
+        d && typeof d === "object" && "detail" in d && typeof (d as { detail?: string }).detail === "string"
+          ? (d as { detail: string }).detail
+          : null;
+      if (detail) {
+        alert(detail);
+      } else {
+        alert("Could not update user. Check fields and try again.");
+      }
+    } finally {
+      setEditSaving(false);
+    }
+  }
+
   function displayName(u: AdminUser) {
     const n = `${u.first_name || ""} ${u.last_name || ""}`.trim();
     return n || u.username;
@@ -109,7 +177,11 @@ export default function AdminUsersPage() {
         </div>
         <button
           type="button"
-          onClick={() => setModal(true)}
+          onClick={() => {
+            setViewUser(null);
+            setEditUser(null);
+            setModal(true);
+          }}
           className="inline-flex items-center justify-center gap-2 bg-stone-900 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-stone-800 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -160,7 +232,8 @@ export default function AdminUsersPage() {
                   <th className="px-5 py-3 font-semibold">Name</th>
                   <th className="px-5 py-3 font-semibold">Email</th>
                   <th className="px-5 py-3 font-semibold">Role</th>
-                  <th className="px-5 py-3 font-semibold w-24">Actions</th>
+                  <th className="px-5 py-3 font-semibold tabular-nums">Loyalty pts</th>
+                  <th className="px-5 py-3 font-semibold w-[140px]">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100">
@@ -177,17 +250,54 @@ export default function AdminUsersPage() {
                         {u.role}
                       </span>
                     </td>
+                    <td className="px-5 py-3.5 text-stone-700 tabular-nums">{u.loyalty_points ?? 0}</td>
                     <td className="px-5 py-3.5">
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(u.id)}
-                        className="p-2 rounded-lg text-rose-600 hover:bg-rose-50 transition-colors"
-                        aria-label="Delete user"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.651 51.651 0 0 0-7.9 0c-1.08.038-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
-                        </svg>
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditUser(null);
+                            setViewUser(u);
+                          }}
+                          className="p-2 rounded-lg text-stone-600 hover:bg-stone-100 transition-colors"
+                          title="View user"
+                          aria-label="View user details"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"
+                            />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openEdit(u)}
+                          className="p-2 rounded-lg text-emerald-700 hover:bg-emerald-50 transition-colors"
+                          title="Edit user"
+                          aria-label="Edit user"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125"
+                            />
+                          </svg>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(u.id)}
+                          className="p-2 rounded-lg text-rose-600 hover:bg-rose-50 transition-colors"
+                          aria-label="Delete user"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.651 51.651 0 0 0-7.9 0c-1.08.038-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                          </svg>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -196,6 +306,134 @@ export default function AdminUsersPage() {
           </div>
         )}
       </div>
+
+      {editUser && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 border border-stone-200 my-8">
+            <h3 className="text-lg font-bold text-stone-900 mb-1">Edit user</h3>
+            <p className="text-sm text-stone-500 mb-4">Account #{editUser.id}</p>
+            <form onSubmit={handleEditSubmit} className="space-y-3">
+              <input
+                required
+                placeholder="Username"
+                value={editForm.username}
+                onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
+                className="w-full px-3 py-2 rounded-lg border border-stone-200 text-sm"
+              />
+              <input
+                required
+                type="email"
+                placeholder="Email"
+                value={editForm.email}
+                onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                className="w-full px-3 py-2 rounded-lg border border-stone-200 text-sm"
+              />
+              <input
+                type="password"
+                placeholder="New password (leave blank to keep)"
+                minLength={6}
+                value={editForm.password}
+                onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
+                className="w-full px-3 py-2 rounded-lg border border-stone-200 text-sm"
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  placeholder="First name"
+                  value={editForm.first_name}
+                  onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg border border-stone-200 text-sm"
+                />
+                <input
+                  placeholder="Last name"
+                  value={editForm.last_name}
+                  onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg border border-stone-200 text-sm"
+                />
+              </div>
+              <select
+                value={editForm.role}
+                onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
+                className="w-full px-3 py-2 rounded-lg border border-stone-200 text-sm"
+              >
+                <option value="customer">Customer</option>
+                <option value="manager">Manager</option>
+                <option value="admin">Admin</option>
+              </select>
+              <label className="flex items-center gap-2 text-sm text-stone-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={editForm.is_active}
+                  disabled={currentUser?.id === editUser.id}
+                  onChange={(e) => setEditForm({ ...editForm, is_active: e.target.checked })}
+                  className="rounded border-stone-300 text-emerald-700 focus:ring-emerald-600"
+                />
+                Active account
+                {currentUser?.id === editUser.id ? (
+                  <span className="text-stone-400 font-normal">(cannot deactivate yourself)</span>
+                ) : null}
+              </label>
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditUser(null)}
+                  className="flex-1 py-2 rounded-lg border border-stone-200 text-sm font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={editSaving}
+                  className="flex-1 py-2 rounded-lg bg-emerald-700 text-white text-sm font-semibold hover:bg-emerald-800 disabled:opacity-50"
+                >
+                  {editSaving ? "Saving…" : "Save"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {viewUser && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 border border-stone-200 my-8">
+            <h3 className="text-lg font-bold text-stone-900 mb-1">User details</h3>
+            <p className="text-sm text-stone-500 mb-4">Account #{viewUser.id}</p>
+            <dl className="space-y-3 text-sm border-t border-stone-100 pt-4">
+              <div className="grid grid-cols-[7rem_1fr] gap-2">
+                <dt className="text-stone-500 font-medium">Username</dt>
+                <dd className="text-stone-900 break-all">{viewUser.username}</dd>
+              </div>
+              <div className="grid grid-cols-[7rem_1fr] gap-2">
+                <dt className="text-stone-500 font-medium">Email</dt>
+                <dd className="text-stone-900 break-all">{viewUser.email}</dd>
+              </div>
+              <div className="grid grid-cols-[7rem_1fr] gap-2">
+                <dt className="text-stone-500 font-medium">Name</dt>
+                <dd className="text-stone-900">{displayName(viewUser)}</dd>
+              </div>
+              <div className="grid grid-cols-[7rem_1fr] gap-2">
+                <dt className="text-stone-500 font-medium">Role</dt>
+                <dd className="text-stone-900 capitalize">{viewUser.role}</dd>
+              </div>
+              <div className="grid grid-cols-[7rem_1fr] gap-2">
+                <dt className="text-stone-500 font-medium">Status</dt>
+                <dd className="text-stone-900">{viewUser.is_active ? "Active" : "Inactive"}</dd>
+              </div>
+              <div className="grid grid-cols-[7rem_1fr] gap-2">
+                <dt className="text-stone-500 font-medium">Loyalty points</dt>
+                <dd className="text-stone-900 tabular-nums">{viewUser.loyalty_points ?? 0}</dd>
+              </div>
+            </dl>
+            <button
+              type="button"
+              onClick={() => setViewUser(null)}
+              className="mt-6 w-full py-2.5 rounded-lg border border-stone-200 text-sm font-medium text-stone-700 hover:bg-stone-50"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
 
       {modal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import Link from "next/link";
@@ -17,9 +17,32 @@ interface RoomData {
   capacity: number;
   image: string | null;
   is_available: boolean;
+  room_status?: string;
+}
+
+function isRoomPubliclyBookable(r: RoomData | null): boolean {
+  if (!r) return false;
+  if (r.room_status) {
+    return r.room_status === "available";
+  }
+  return r.is_available;
 }
 
 const PLACEHOLDER = "/room1.png";
+
+/** Local calendar date as YYYY-MM-DD (for `<input type="date" min=… />`). */
+function toLocalISODate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function addDaysLocal(isoDate: string, days: number): string {
+  const d = new Date(`${isoDate}T12:00:00`);
+  d.setDate(d.getDate() + days);
+  return toLocalISODate(d);
+}
 
 const AMENITIES = [
   {
@@ -100,18 +123,38 @@ export default function RoomDetailPage() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [form, setForm] = useState({ check_in: "", check_out: "", guests: 1 });
 
+  const todayMin = useMemo(() => toLocalISODate(new Date()), []);
+  const defaultCheckoutMin = useMemo(() => addDaysLocal(todayMin, 1), [todayMin]);
+  const checkoutMin = form.check_in ? addDaysLocal(form.check_in, 1) : defaultCheckoutMin;
+
+  const loadRoom = useCallback(
+    (silent = false) => {
+      if (!silent) setLoading(true);
+      api
+        .get(`/rooms/${roomId}/`)
+        .then((res) => {
+          setRoom(res.data);
+          setLoading(false);
+        })
+        .catch(() => {
+          setNotFound(true);
+          setLoading(false);
+        });
+    },
+    [roomId],
+  );
+
   useEffect(() => {
-    api
-      .get(`/rooms/${roomId}/`)
-      .then((res) => {
-        setRoom(res.data);
-        setLoading(false);
-      })
-      .catch(() => {
-        setNotFound(true);
-        setLoading(false);
-      });
-  }, [roomId]);
+    loadRoom(false);
+  }, [loadRoom]);
+
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState === "visible") loadRoom(true);
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [loadRoom]);
 
   const roomImage = room?.image || PLACEHOLDER;
 
@@ -121,6 +164,8 @@ export default function RoomDetailPage() {
       return;
     }
     if (!form.check_in || !form.check_out) return;
+    if (form.check_in < todayMin) return;
+    if (form.check_out <= form.check_in) return;
     const params = new URLSearchParams({
       room: String(roomId),
       check_in: form.check_in,
@@ -157,6 +202,8 @@ export default function RoomDetailPage() {
       </div>
     );
   }
+
+  const bookable = isRoomPubliclyBookable(room);
 
   return (
     <div className="font-[var(--font-inter)]">
@@ -233,17 +280,13 @@ export default function RoomDetailPage() {
                 </span>
                 <span
                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm ${
-                    room.is_available
-                      ? "bg-green-50 text-green-700"
-                      : "bg-red-50 text-red-600"
+                    bookable ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"
                   }`}
                 >
                   <span
-                    className={`w-2 h-2 rounded-full ${
-                      room.is_available ? "bg-green-500" : "bg-red-500"
-                    }`}
+                    className={`w-2 h-2 rounded-full ${bookable ? "bg-green-500" : "bg-red-500"}`}
                   />
-                  {room.is_available ? "Available" : "Currently Booked"}
+                  {bookable ? "Available" : "Currently Booked"}
                 </span>
               </div>
             </motion.div>
@@ -294,8 +337,16 @@ export default function RoomDetailPage() {
                   </label>
                   <input
                     type="date"
+                    min={todayMin}
                     value={form.check_in}
-                    onChange={(e) => setForm((p) => ({ ...p, check_in: e.target.value }))}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setForm((p) => {
+                        let check_out = p.check_out;
+                        if (check_out && v && check_out <= v) check_out = "";
+                        return { ...p, check_in: v, check_out };
+                      });
+                    }}
                     className="w-full p-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-shadow"
                   />
                 </div>
@@ -305,6 +356,7 @@ export default function RoomDetailPage() {
                   </label>
                   <input
                     type="date"
+                    min={checkoutMin}
                     value={form.check_out}
                     onChange={(e) => setForm((p) => ({ ...p, check_out: e.target.value }))}
                     className="w-full p-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-shadow"
@@ -329,10 +381,10 @@ export default function RoomDetailPage() {
 
                 <button
                   onClick={handleBooking}
-                  disabled={!room.is_available}
+                  disabled={!bookable}
                   className="w-full bg-emerald-700 text-white py-3.5 rounded-full font-medium hover:bg-emerald-800 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                 >
-                  {!room.is_available ? "Currently Unavailable" : "Book Now"}
+                  {!bookable ? "Currently Unavailable" : "Book Now"}
                 </button>
 
                 {!user && (
