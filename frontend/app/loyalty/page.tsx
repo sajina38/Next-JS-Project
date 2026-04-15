@@ -7,11 +7,16 @@ import api from "@/lib/api";
 
 export default function LoyaltyPage() {
   const { user, loading: authLoading } = useAuth();
+  const [mounted, setMounted] = useState(false);
   const [points, setPoints] = useState<number | null>(null);
   const [loadingPoints, setLoadingPoints] = useState(false);
 
   useEffect(() => {
-    if (!user) {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted || !user) {
       setPoints(null);
       return;
     }
@@ -21,7 +26,9 @@ export default function LoyaltyPage() {
       .then((res) => setPoints(res.data.loyalty_points ?? 0))
       .catch(() => setPoints(null))
       .finally(() => setLoadingPoints(false));
-  }, [user]);
+  }, [mounted, user]);
+
+  const authReady = mounted && !authLoading;
 
   return (
     <div className="min-h-screen bg-[var(--bg)] pb-20">
@@ -32,7 +39,16 @@ export default function LoyaltyPage() {
           Stay with us, earn points on every confirmed booking, and save on your next visit.
         </p>
 
-        {!authLoading && user && (
+        {!authReady && (
+          <div
+            className="rounded-2xl border border-gray-100 bg-gray-50/90 px-6 py-6 mb-10 min-h-[132px] flex items-center justify-center"
+            aria-busy="true"
+          >
+            <div className="w-8 h-8 border-2 border-gray-200 border-t-emerald-700 rounded-full animate-spin" />
+          </div>
+        )}
+
+        {authReady && user && (
           <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 px-6 py-6 mb-10">
             <p className="text-sm font-medium text-emerald-900 mb-1">Your balance</p>
             {loadingPoints ? (
@@ -51,7 +67,7 @@ export default function LoyaltyPage() {
           </div>
         )}
 
-        {!authLoading && !user && (
+        {authReady && !user && (
           <div className="rounded-2xl border border-gray-200 bg-white px-6 py-5 mb-10 shadow-sm">
             <p className="text-gray-700 text-sm mb-3">Sign in to see your points balance and redeem on checkout.</p>
             <div className="flex flex-wrap gap-3">
@@ -128,7 +144,7 @@ export default function LoyaltyPage() {
           >
             Browse rooms
           </Link>
-          {user ? (
+          {authReady && user ? (
             <Link
               href="/profile"
               className="inline-flex flex-1 items-center justify-center gap-2 px-6 py-3.5 rounded-full border border-gray-300 text-gray-800 font-semibold text-sm hover:bg-white transition-colors"
