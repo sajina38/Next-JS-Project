@@ -270,6 +270,19 @@ class ManagerDashboardView(APIView):
             for r in rooms_qs
         ]
 
+        from django.db.models import Count
+
+        bookings_by_status = list(
+            Booking.objects.values("status")
+            .annotate(count=Count("id"))
+            .order_by("status")
+        )
+        rooms_by_status = list(
+            Room.objects.values("room_status")
+            .annotate(count=Count("id"))
+            .order_by("room_status")
+        )
+
         return Response(
             {
                 "metrics": {
@@ -279,6 +292,10 @@ class ManagerDashboardView(APIView):
                 },
                 "recent_bookings": recent_bookings,
                 "rooms_status": rooms_status,
+                "charts": {
+                    "bookings_by_status": bookings_by_status,
+                    "rooms_by_status": rooms_by_status,
+                },
             }
         )
 
@@ -326,6 +343,24 @@ class AdminDashboardView(APIView):
             for r in rooms_qs
         ]
 
+        from django.db.models import Count
+
+        bookings_by_status = list(
+            Booking.objects.values("status")
+            .annotate(count=Count("id"))
+            .order_by("status")
+        )
+        rooms_by_status = list(
+            Room.objects.values("room_status")
+            .annotate(count=Count("id"))
+            .order_by("room_status")
+        )
+        users_by_role = list(
+            User.objects.values("role")
+            .annotate(count=Count("id"))
+            .order_by("role")
+        )
+
         return Response(
             {
                 "metrics": {
@@ -337,6 +372,11 @@ class AdminDashboardView(APIView):
                 },
                 "recent_bookings": recent_bookings,
                 "rooms_status": rooms_status,
+                "charts": {
+                    "bookings_by_status": bookings_by_status,
+                    "rooms_by_status": rooms_by_status,
+                    "users_by_role": users_by_role,
+                },
             }
         )
 
@@ -403,7 +443,25 @@ class AdminReportsView(APIView):
             if mo is not None:
                 row_map[f"{mo.year}-{mo.month:02d}"] = r["count"]
 
+        rev_rows = (
+            Booking.objects.filter(
+                created_at__gte=start_dt,
+                payment_status=Booking.PaymentStatus.PAID,
+            )
+            .annotate(month=TruncMonth("created_at"))
+            .values("month")
+            .annotate(revenue=Sum("total_amount"))
+            .order_by("month")
+        )
+        rev_map = {}
+        for r in rev_rows:
+            mo = r["month"]
+            if mo is not None:
+                amt = r["revenue"]
+                rev_map[f"{mo.year}-{mo.month:02d}"] = float(amt) if amt is not None else 0.0
+
         monthly_bookings = []
+        monthly_revenue = []
         cy, cm = y, m
         for _ in range(12):
             key = f"{cy}-{cm:02d}"
@@ -414,10 +472,32 @@ class AdminReportsView(APIView):
                     "count": row_map.get(key, 0),
                 }
             )
+            monthly_revenue.append(
+                {
+                    "key": key,
+                    "label": f"{calendar.month_abbr[cm]} {cy}",
+                    "amount": rev_map.get(key, 0.0),
+                }
+            )
             cm += 1
             if cm > 12:
                 cm = 1
                 cy += 1
+
+        bookings_by_status = list(
+            Booking.objects.values("status")
+            .annotate(count=Count("id"))
+            .order_by("status")
+        )
+        payment_rows = (
+            Booking.objects.values("payment_status")
+            .annotate(count=Count("id"))
+            .order_by("payment_status")
+        )
+        bookings_by_payment = [
+            {"payment_status": r["payment_status"], "count": r["count"]}
+            for r in payment_rows
+        ]
 
         return Response(
             {
@@ -425,6 +505,9 @@ class AdminReportsView(APIView):
                 "total_revenue": total_revenue,
                 "summary_month_label": summary_month_label,
                 "monthly_bookings": monthly_bookings,
+                "monthly_revenue": monthly_revenue,
+                "bookings_by_status": bookings_by_status,
+                "bookings_by_payment": bookings_by_payment,
             }
         )
 

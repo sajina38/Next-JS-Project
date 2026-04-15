@@ -66,7 +66,17 @@ class RoomSerializer(serializers.ModelSerializer):
 class HotelSettingsSerializer(serializers.ModelSerializer):
     class Meta:
         model = HotelSettings
-        fields = ["id", "hotel_name", "contact_info", "email"]
+        fields = [
+            "id",
+            "hotel_name",
+            "tagline",
+            "contact_info",
+            "phone",
+            "email",
+            "website_url",
+            "check_in_policy",
+            "check_out_policy",
+        ]
 
     def validate_hotel_name(self, value):
         if not (value or "").strip():

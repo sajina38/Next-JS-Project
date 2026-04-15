@@ -1,11 +1,28 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import api from "@/lib/api";
+import { ReportsChartsSection } from "@/component/charts/ReportsChartsSection";
 
 interface MonthlyRow {
   key: string;
   label: string;
+  count: number;
+}
+
+interface MonthlyRevenueRow {
+  key: string;
+  label: string;
+  amount: number;
+}
+
+interface StatusCountRow {
+  status: string;
+  count: number;
+}
+
+interface PaymentCountRow {
+  payment_status: string;
   count: number;
 }
 
@@ -14,6 +31,9 @@ interface ReportsData {
   total_revenue: string;
   summary_month_label: string;
   monthly_bookings: MonthlyRow[];
+  monthly_revenue: MonthlyRevenueRow[];
+  bookings_by_status: StatusCountRow[];
+  bookings_by_payment: PaymentCountRow[];
 }
 
 export default function AdminReportsPage() {
@@ -27,11 +47,6 @@ export default function AdminReportsPage() {
       .catch(() => setError(true));
   }, []);
 
-  const maxCount = useMemo(() => {
-    if (!data?.monthly_bookings?.length) return 1;
-    return Math.max(1, ...data.monthly_bookings.map((m) => m.count));
-  }, [data]);
-
   return (
     <div className="p-6 md:p-10 max-w-6xl mx-auto">
       <div className="mb-8">
@@ -39,7 +54,7 @@ export default function AdminReportsPage() {
           Reports &amp; analytics
         </h1>
         <p className="text-stone-500 mt-1 text-sm md:text-base">
-          Bookings and paid revenue for the current month; chart shows the last 12 months.
+          Current-month KPIs and interactive charts for the last 12 months (ApexCharts).
         </p>
       </div>
 
@@ -75,33 +90,16 @@ export default function AdminReportsPage() {
             />
           </div>
 
-          <div className="bg-white rounded-xl border border-stone-200 p-5 md:p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-stone-900">Bookings by month</h2>
-            <p className="text-sm text-stone-500 mt-0.5 mb-6">Last 12 months (by booking created date)</p>
-            <div className="flex gap-1 sm:gap-2 border-b border-stone-200 pb-2">
-              {data.monthly_bookings.map((row) => {
-                const pct = maxCount ? (row.count / maxCount) * 100 : 0;
-                const barH = row.count > 0 ? Math.max(pct, 6) : 2;
-                return (
-                  <div key={row.key} className="flex-1 flex flex-col items-center min-w-0 h-52">
-                    <span className="text-xs font-medium text-stone-600 tabular-nums shrink-0 mb-1">
-                      {row.count}
-                    </span>
-                    <div className="flex-1 w-full flex items-end justify-center min-h-0">
-                      <div
-                        className="w-full max-w-[2.5rem] rounded-t-md bg-violet-500/90 transition-[height] duration-300"
-                        style={{ height: `${barH}%` }}
-                        title={`${row.label}: ${row.count}`}
-                      />
-                    </div>
-                    <span className="text-[10px] sm:text-xs text-stone-500 truncate w-full text-center mt-2 shrink-0">
-                      {row.label}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          <ReportsChartsSection
+            categories={data.monthly_bookings.map((m) => m.label)}
+            bookingCounts={data.monthly_bookings.map((m) => m.count)}
+            revenueAmounts={data.monthly_bookings.map((m) => {
+              const row = data.monthly_revenue?.find((r) => r.key === m.key);
+              return row?.amount ?? 0;
+            })}
+            bookingsByStatus={data.bookings_by_status ?? []}
+            bookingsByPayment={data.bookings_by_payment ?? []}
+          />
         </>
       )}
 

@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 
 const NAV = [
@@ -66,9 +66,14 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const { user, loading, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    if (loading) return;
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted || loading) return;
     if (!user) {
       router.replace("/login");
       return;
@@ -76,9 +81,9 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     if (user.role !== "admin") {
       router.replace("/");
     }
-  }, [loading, user, router]);
+  }, [mounted, loading, user, router]);
 
-  if (loading || !user || user.role !== "admin") {
+  if (!mounted || loading || !user || user.role !== "admin") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-stone-100">
         <div className="w-10 h-10 border-4 border-stone-200 border-t-emerald-700 rounded-full animate-spin" />

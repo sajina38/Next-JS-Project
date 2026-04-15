@@ -11,12 +11,43 @@ class HotelSettings(models.Model):
     """Singleton row (pk=1): hotel identity and contact shown in admin / future public pages."""
 
     hotel_name = models.CharField(max_length=200, default="Urban Boutique Hotel")
+    tagline = models.CharField(
+        max_length=240,
+        blank=True,
+        default="",
+        help_text="Short line under the hotel name on marketing or confirmation copy.",
+    )
     contact_info = models.TextField(
         blank=True,
         default="",
         help_text="Address, phone, hours, or other contact details.",
     )
+    phone = models.CharField(
+        max_length=40,
+        blank=True,
+        default="",
+        help_text="Main front desk or reservations phone (display only).",
+    )
     email = models.EmailField(blank=True, default="")
+    website_url = models.CharField(
+        "Website URL",
+        max_length=500,
+        blank=True,
+        default="",
+        help_text="Public website link (include https:// when possible).",
+    )
+    check_in_policy = models.CharField(
+        max_length=120,
+        blank=True,
+        default="",
+        help_text="e.g. From 2:00 PM — shown to guests where you surface policies.",
+    )
+    check_out_policy = models.CharField(
+        max_length=120,
+        blank=True,
+        default="",
+        help_text="e.g. By 11:00 AM",
+    )
 
     class Meta:
         verbose_name = "Hotel settings"
@@ -35,8 +66,13 @@ class HotelSettings(models.Model):
             pk=1,
             defaults={
                 "hotel_name": "Urban Boutique Hotel",
+                "tagline": "",
                 "contact_info": "",
+                "phone": "",
                 "email": "",
+                "website_url": "",
+                "check_in_policy": "",
+                "check_out_policy": "",
             },
         )
         return obj

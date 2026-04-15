@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { DashboardChartsSection } from "@/component/charts/DashboardChartsSection";
 
 interface Metrics {
   total_customers: number;
@@ -26,6 +27,21 @@ interface RoomRow {
   name: string;
   price: string;
   status: string;
+}
+
+interface StatusCountRow {
+  status: string;
+  count: number;
+}
+
+interface RoomStatusCountRow {
+  room_status: string;
+  count: number;
+}
+
+interface DashboardChartsPayload {
+  bookings_by_status: StatusCountRow[];
+  rooms_by_status: RoomStatusCountRow[];
 }
 
 const BOOKING_STATUS: Record<string, string> = {
@@ -53,6 +69,7 @@ export default function ManagerDashboardPage() {
     metrics: Metrics;
     recent_bookings: RecentBooking[];
     rooms_status: RoomRow[];
+    charts?: DashboardChartsPayload;
   } | null>(null);
   const [error, setError] = useState(false);
 
@@ -110,6 +127,13 @@ export default function ManagerDashboardPage() {
               }
             />
           </div>
+
+          {data.charts && (
+            <DashboardChartsSection
+              bookingsByStatus={data.charts.bookings_by_status ?? []}
+              roomsByStatus={data.charts.rooms_by_status ?? []}
+            />
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-white rounded-xl border border-stone-200 shadow-sm overflow-hidden">

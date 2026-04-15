@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { DashboardChartsSection } from "@/component/charts/DashboardChartsSection";
 
 interface Metrics {
   total_users: number;
@@ -30,6 +31,27 @@ interface RoomRow {
   status: string;
 }
 
+interface StatusCountRow {
+  status: string;
+  count: number;
+}
+
+interface RoomStatusCountRow {
+  room_status: string;
+  count: number;
+}
+
+interface RoleCountRow {
+  role: string;
+  count: number;
+}
+
+interface DashboardChartsPayload {
+  bookings_by_status: StatusCountRow[];
+  rooms_by_status: RoomStatusCountRow[];
+  users_by_role: RoleCountRow[];
+}
+
 const BOOKING_STATUS: Record<string, string> = {
   pending: "bg-amber-50 text-amber-800",
   confirmed: "bg-emerald-50 text-emerald-800",
@@ -55,6 +77,7 @@ export default function AdminDashboardPage() {
     metrics: Metrics;
     recent_bookings: RecentBooking[];
     rooms_status: RoomRow[];
+    charts?: DashboardChartsPayload;
   } | null>(null);
   const [error, setError] = useState(false);
 
@@ -122,6 +145,14 @@ export default function AdminDashboardPage() {
               }
             />
           </div>
+
+          {data.charts && (
+            <DashboardChartsSection
+              bookingsByStatus={data.charts.bookings_by_status ?? []}
+              roomsByStatus={data.charts.rooms_by_status ?? []}
+              usersByRole={data.charts.users_by_role ?? []}
+            />
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-white rounded-xl border border-stone-200 shadow-sm overflow-hidden">

@@ -6,7 +6,7 @@ from .models import HotelSettings, Room
 
 @admin.register(HotelSettings)
 class HotelSettingsAdmin(admin.ModelAdmin):
-    list_display = ("hotel_name", "email")
+    list_display = ("hotel_name", "phone", "email")
 
     def has_add_permission(self, request):
         return not HotelSettings.objects.exists()
