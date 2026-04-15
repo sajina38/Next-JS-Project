@@ -66,6 +66,12 @@ function formatBookingError(err: unknown): string {
   return "Booking failed. Please try again.";
 }
 
+/** At least 9 digits (e.g. +977 98xxxxxxxx); matches backend booking validation. */
+function isValidGuestPhone(phone: string): boolean {
+  const digits = phone.replace(/\D/g, "");
+  return digits.length >= 9 && digits.length <= 15;
+}
+
 /** Matches backend: 100 pts = Rs. 100 off, capped by gross total in Rs. 100 blocks. */
 function previewLoyaltyDiscount(loyaltyPoints: number, gross: number) {
   if (loyaltyPoints < 100 || gross < 100) return 0;
@@ -207,6 +213,12 @@ function ConfirmBookingContent() {
       setError("Please enter your phone number.");
       return;
     }
+    if (!isValidGuestPhone(phone)) {
+      setError(
+        "Enter a valid phone number with at least 9 digits, including country code (e.g. +977 9800000000).",
+      );
+      return;
+    }
     if (!adults) {
       setError("Please enter the number of adults.");
       return;
@@ -336,11 +348,17 @@ function ConfirmBookingContent() {
                   </label>
                   <input
                     type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    maxLength={22}
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="+977 9800000000"
                     className={inputClass}
                   />
+                  <p className="text-xs text-gray-400 mt-1">
+                    Use your full number with country code (at least 9 digits).
+                  </p>
                 </div>
                 <div>
                   <label className={labelClass}>Country</label>

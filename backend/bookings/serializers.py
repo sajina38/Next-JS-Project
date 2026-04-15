@@ -17,6 +17,27 @@ from .room_sync import room_has_schedule_blocking_conflict
 
 User = get_user_model()
 
+# E.164-style numbers are at most 15 digits; Nepal mobile + country needs at least ~9 digits.
+_PHONE_MIN_DIGITS = 9
+_PHONE_MAX_DIGITS = 15
+
+
+def _validate_guest_phone_value(value: str, *, required: bool) -> str:
+    s = (value or "").strip()
+    if not s:
+        if required:
+            raise serializers.ValidationError("Phone number is required.")
+        return ""
+    digits = "".join(c for c in s if c.isdigit())
+    if len(digits) < _PHONE_MIN_DIGITS:
+        raise serializers.ValidationError(
+            f"Enter a valid phone number with at least {_PHONE_MIN_DIGITS} digits "
+            "(include country code, e.g. +977 98XXXXXXXX for Nepal)."
+        )
+    if len(digits) > _PHONE_MAX_DIGITS:
+        raise serializers.ValidationError("Phone number has too many digits.")
+    return s
+
 
 def _booking_gross_total(room, check_in, check_out) -> Decimal:
     nights = (check_out - check_in).days
@@ -72,6 +93,9 @@ class BookingSerializer(serializers.ModelSerializer):
             "loyalty_points_redeemed",
             "points_added",
         ]
+
+    def validate_guest_phone(self, value):
+        return _validate_guest_phone_value(value, required=True)
 
     @transaction.atomic
     def create(self, validated_data):
@@ -212,6 +236,13 @@ class AdminBookingUpdateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Amount cannot be negative.")
         return value
 
+    def validate_guest_phone(self, value):
+        if value is None:
+            return ""
+        if isinstance(value, str) and not value.strip():
+            return ""
+        return _validate_guest_phone_value(value, required=False)
+
     def validate(self, data):
         inst = self.instance
         if not inst:
@@ -263,6 +294,9 @@ class StaffBookingCreateSerializer(serializers.ModelSerializer):
         if not user.is_active:
             raise serializers.ValidationError("This account is inactive.")
         return user
+
+    def validate_guest_phone(self, value):
+        return _validate_guest_phone_value(value, required=False)
 
     def validate(self, data):
         check_in = data.get("check_in")
