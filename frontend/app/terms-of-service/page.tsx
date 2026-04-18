@@ -105,6 +105,7 @@ export default function TermsOfServicePage() {
       </LegalSection>
 
       <LegalSection title="Contact">
+
         <p>
           Questions about these Terms:{" "}
           <a

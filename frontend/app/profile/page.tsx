@@ -93,10 +93,13 @@ function ProfileBookingsTab({
 }: {
   bookings: Booking[];
   loadingBookings: boolean;
-  onCancelBooking: (id: number) => void;
+  onCancelBooking: (id: number) => Promise<void>;
   loyaltyCards?: number;
 }) {
   const [openId, setOpenId] = useState<number | null>(null);
+  const [cancelDialogId, setCancelDialogId] = useState<number | null>(null);
+  const [cancelBusy, setCancelBusy] = useState(false);
+  const [cancelDialogError, setCancelDialogError] = useState("");
 
   const active = bookings.filter((b) => b.status === "pending" || b.status === "confirmed");
   const history = bookings.filter((b) => b.status === "checkout");
@@ -167,7 +170,10 @@ function ProfileBookingsTab({
                 {canCancel && (
                   <button
                     type="button"
-                    onClick={() => onCancelBooking(b.id)}
+                    onClick={() => {
+                      setCancelDialogError("");
+                      setCancelDialogId(b.id);
+                    }}
                     className="inline-flex items-center justify-center px-4 py-2 rounded-lg text-sm font-medium text-red-600 border border-red-200 hover:bg-red-50 transition-colors"
                   >
                     Cancel booking
@@ -312,8 +318,24 @@ function ProfileBookingsTab({
     );
   }
 
+  const cancelTarget = cancelDialogId != null ? bookings.find((x) => x.id === cancelDialogId) : null;
+
+  async function confirmCancelBooking() {
+    if (cancelDialogId == null) return;
+    setCancelDialogError("");
+    setCancelBusy(true);
+    try {
+      await onCancelBooking(cancelDialogId);
+      setCancelDialogId(null);
+    } catch {
+      setCancelDialogError("Could not cancel. Please try again.");
+    } finally {
+      setCancelBusy(false);
+    }
+  }
+
   return (
-    <div className="w-full">
+    <div className="w-full relative">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mb-10 pb-6 border-b border-stone-200">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">My bookings</h1>
@@ -363,6 +385,57 @@ function ProfileBookingsTab({
             list={history}
           />
           <BookingSection title="Cancelled" description="Reservations you cancelled." list={cancelled} />
+        </div>
+      )}
+
+      {cancelDialogId != null && cancelTarget && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/40"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="cancel-booking-title"
+          onClick={() => {
+            if (!cancelBusy) {
+              setCancelDialogId(null);
+              setCancelDialogError("");
+            }
+          }}
+        >
+          <div
+            className="bg-white rounded-xl shadow-lg max-w-md w-full p-6 border border-stone-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="cancel-booking-title" className="text-lg font-semibold text-gray-900">
+              Cancel this booking?
+            </h2>
+            <p className="text-sm text-gray-600 mt-2">
+              {cancelTarget.room_name} · {cancelTarget.check_in} → {cancelTarget.check_out}
+            </p>
+            {cancelDialogError && (
+              <p className="text-sm text-red-600 mt-3 bg-red-50 rounded-lg px-3 py-2">{cancelDialogError}</p>
+            )}
+            <div className="flex gap-3 mt-6">
+              <button
+                type="button"
+                disabled={cancelBusy}
+                onClick={() => {
+                  setCancelDialogId(null);
+                  setCancelDialogError("");
+                }}
+                className="flex-1 py-2.5 rounded-lg border border-stone-200 text-sm font-medium text-gray-700 hover:bg-stone-50 disabled:opacity-50"
+              >
+                Keep booking
+              </button>
+              <button
+                type="button"
+                disabled={cancelBusy}
+                onClick={() => void confirmCancelBooking()}
+                className="flex-1 py-2.5 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50"
+              >
+                {cancelBusy ? "Cancelling…" : "Yes, cancel"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -424,15 +497,10 @@ export default function ProfilePage() {
   }, [user]);
 
   async function cancelBooking(id: number) {
-    if (!confirm("Are you sure you want to cancel this booking?")) return;
-    try {
-      await api.patch(`/bookings/${id}/`, { status: "cancelled" });
-      setBookings((prev) =>
-        prev.map((b) => (b.id === id ? { ...b, status: "cancelled" } : b))
-      );
-    } catch {
-      alert("Failed to cancel booking.");
-    }
+    await api.patch(`/bookings/${id}/`, { status: "cancelled" });
+    setBookings((prev) =>
+      prev.map((b) => (b.id === id ? { ...b, status: "cancelled" } : b))
+    );
   }
 
   function resetForm() {
