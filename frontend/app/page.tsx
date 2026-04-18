@@ -159,12 +159,14 @@ export default function Home() {
                   <div className="p-6">
                     <h4 className="text-xl font-semibold mb-2">{room.title}</h4>
                     <p className="text-gray-600 mb-4">{room.desc}</p>
-                    <Link
-                      href="/rooms"
-                      className="inline-block bg-emerald-700 text-white px-5 py-2 rounded-full text-sm font-medium transition-colors hover:bg-emerald-800 active:bg-emerald-900"
-                    >
-                      Book
-                    </Link>
+                    <div className="flex justify-center">
+                      <Link
+                        href="/rooms"
+                        className="inline-block bg-emerald-700 text-white px-5 py-2 rounded-full text-sm font-medium transition-colors hover:bg-emerald-800 active:bg-emerald-900"
+                      >
+                        Book
+                      </Link>
+                    </div>
                   </div>
                 </motion.div>
               ))}

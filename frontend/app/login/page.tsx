@@ -224,7 +224,7 @@ export default function LoginPage() {
           </form>
 
           <p className="mt-8 text-center text-gray-600">
-            Don&apos;t have an account?{" "}
+            Dont have an account?{" "}
             <Link
               href="/register"
               className="text-emerald-700 font-semibold hover:underline"
@@ -233,7 +233,7 @@ export default function LoginPage() {
             </Link>
           </p>
 
-          <div className="mt-12 flex justify-end gap-4 text-sm text-gray-500">
+          <div className="mt-12 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-gray-500">
             <Link href="/privacy-policy" className="hover:text-gray-700">
               Privacy Policy
             </Link>
