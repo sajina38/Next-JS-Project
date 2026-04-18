@@ -72,6 +72,15 @@ function isValidGuestPhone(phone: string): boolean {
   return digits.length >= 9 && digits.length <= 15;
 }
 
+type BookingFieldKey =
+  | "fullName"
+  | "email"
+  | "phone"
+  | "adults"
+  | "arrival"
+  | "idPhoto"
+  | "payment";
+
 function ConfirmBookingContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -115,7 +124,9 @@ function ConfirmBookingContent() {
   const [useBreakfastCard, setUseBreakfastCard] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
+  /** Server / network errors only (shown above submit). */
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<BookingFieldKey, string>>>({});
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
@@ -162,6 +173,11 @@ function ConfirmBookingContent() {
     if (file) {
       setIdPhoto(file);
       setIdPreview(URL.createObjectURL(file));
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next.idPhoto;
+        return next;
+      });
     }
   };
 
@@ -187,44 +203,32 @@ function ConfirmBookingContent() {
 
   const handleSubmit = async () => {
     setError("");
-    if (!fullName.trim()) {
-      setError("Please enter your full name.");
-      return;
-    }
-    if (!email.trim()) {
-      setError("Please enter your email address.");
-      return;
-    }
+    const next: Partial<Record<BookingFieldKey, string>> = {};
+    if (!fullName.trim()) next.fullName = "Please enter your full name.";
+    if (!email.trim()) next.email = "Please enter your email address.";
     if (!phone.trim()) {
-      setError("Please enter your phone number.");
-      return;
+      next.phone = "Please enter your phone number.";
+    } else if (!isValidGuestPhone(phone)) {
+      next.phone =
+        "Enter a valid phone number with at least 9 digits, including country code (e.g. +977 9800000000).";
     }
-    if (!isValidGuestPhone(phone)) {
-      setError(
-        "Enter a valid phone number with at least 9 digits, including country code (e.g. +977 9800000000).",
-      );
-      return;
-    }
-    if (!adults) {
-      setError("Please enter the number of adults.");
-      return;
-    }
+    if (!adults) next.adults = "Please enter the number of adults.";
     if (!arrivalHour || !arrivalMinute) {
-      setError("Please select your estimated arrival time.");
-      return;
+      next.arrival = "Please select your estimated arrival time.";
     }
     if (!idPhoto) {
-      setError("Please upload a valid ID (citizenship, passport, or government-issued ID).");
-      return;
+      next.idPhoto =
+        "Please upload a photo of your citizenship card, passport, or government-issued ID.";
     }
-    if (!paymentOption) {
-      setError("Please select a payment option.");
-      return;
-    }
+    if (!paymentOption) next.payment = "Please select a payment option.";
     if (paymentOption === "khalti" && totalPrice < 10) {
-      setError(
-        "Khalti cannot charge amounts below Rs. 10. Choose more nights or pay at check-in.",
-      );
+      next.payment =
+        "Khalti cannot charge amounts below Rs. 10. Choose more nights or pay at check-in.";
+    }
+    setFieldErrors(next);
+    if (Object.keys(next).length > 0) {
+      const first = document.querySelector<HTMLElement>("[data-booking-field-error]");
+      first?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
 
@@ -261,16 +265,38 @@ function ConfirmBookingContent() {
 
       setSuccess(true);
     } catch (err: unknown) {
+      setFieldErrors({});
       setError(formatBookingError(err));
     } finally {
       setSubmitting(false);
     }
   };
 
-  const inputClass =
-    "w-full p-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent";
+  const inputBase =
+    "w-full p-3 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:border-transparent";
+  const inputClass = `${inputBase} border-gray-200 focus:ring-emerald-600 focus:border-transparent`;
+  const inputErrorClass = `${inputBase} border-red-400 focus:ring-red-500`;
   const labelClass =
     "block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5";
+
+  const clearField = (key: BookingFieldKey) => {
+    setFieldErrors((prev) => {
+      if (!prev[key]) return prev;
+      const n = { ...prev };
+      delete n[key];
+      return n;
+    });
+  };
+
+  const fieldErrorMsg = (key: BookingFieldKey) => {
+    const msg = fieldErrors[key];
+    if (!msg) return null;
+    return (
+      <p className="text-sm text-red-600 mt-1.5" data-booking-field-error>
+        {msg}
+      </p>
+    );
+  };
 
   if (!clientReady || authLoading || !user) {
     return <FullPageSpinner />;
@@ -311,10 +337,14 @@ function ConfirmBookingContent() {
                   <input
                     type="text"
                     value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
+                    onChange={(e) => {
+                      setFullName(e.target.value);
+                      clearField("fullName");
+                    }}
                     placeholder="Enter your full name"
-                    className={inputClass}
+                    className={fieldErrors.fullName ? inputErrorClass : inputClass}
                   />
+                  {fieldErrorMsg("fullName")}
                 </div>
                 <div>
                   <label className={labelClass}>
@@ -323,10 +353,14 @@ function ConfirmBookingContent() {
                   <input
                     type="email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      clearField("email");
+                    }}
                     placeholder="Enter your email"
-                    className={inputClass}
+                    className={fieldErrors.email ? inputErrorClass : inputClass}
                   />
+                  {fieldErrorMsg("email")}
                 </div>
                 <div>
                   <label className={labelClass}>
@@ -338,13 +372,17 @@ function ConfirmBookingContent() {
                     autoComplete="tel"
                     maxLength={22}
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    onChange={(e) => {
+                      setPhone(e.target.value);
+                      clearField("phone");
+                    }}
                     placeholder="+977 9800000000"
-                    className={inputClass}
+                    className={fieldErrors.phone ? inputErrorClass : inputClass}
                   />
                   <p className="text-xs text-gray-400 mt-1">
                     Use your full number with country code (at least 9 digits).
                   </p>
+                  {fieldErrorMsg("phone")}
                 </div>
                 <div>
                   <label className={labelClass}>Country</label>
@@ -364,8 +402,11 @@ function ConfirmBookingContent() {
                   </label>
                   <select
                     value={adults}
-                    onChange={(e) => setAdults(Number(e.target.value))}
-                    className={inputClass}
+                    onChange={(e) => {
+                      setAdults(Number(e.target.value));
+                      clearField("adults");
+                    }}
+                    className={fieldErrors.adults ? inputErrorClass : inputClass}
                   >
                     {[1, 2, 3, 4, 5, 6].map((n) => (
                       <option key={n} value={n}>
@@ -373,6 +414,7 @@ function ConfirmBookingContent() {
                       </option>
                     ))}
                   </select>
+                  {fieldErrorMsg("adults")}
                 </div>
                 <div>
                   <label className={labelClass}>Number of Children</label>
@@ -399,10 +441,17 @@ function ConfirmBookingContent() {
                   <label className={labelClass}>
                     Estimated Arrival Time <span className="text-red-400">*</span>
                   </label>
-                  <div className="flex items-center gap-2">
+                  <div
+                    className={`flex items-center gap-2 rounded-lg p-1 -m-1 ${
+                      fieldErrors.arrival ? "ring-2 ring-red-400 ring-offset-1" : ""
+                    }`}
+                  >
                     <select
                       value={arrivalHour}
-                      onChange={(e) => setArrivalHour(e.target.value)}
+                      onChange={(e) => {
+                        setArrivalHour(e.target.value);
+                        clearField("arrival");
+                      }}
                       className="p-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent w-20"
                     >
                       {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0")).map((h) => (
@@ -412,7 +461,10 @@ function ConfirmBookingContent() {
                     <span className="text-gray-400 font-bold text-lg">:</span>
                     <select
                       value={arrivalMinute}
-                      onChange={(e) => setArrivalMinute(e.target.value)}
+                      onChange={(e) => {
+                        setArrivalMinute(e.target.value);
+                        clearField("arrival");
+                      }}
                       className="p-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent w-20"
                     >
                       {["00", "15", "30", "45"].map((m) => (
@@ -421,13 +473,17 @@ function ConfirmBookingContent() {
                     </select>
                     <select
                       value={arrivalPeriod}
-                      onChange={(e) => setArrivalPeriod(e.target.value as "AM" | "PM")}
+                      onChange={(e) => {
+                        setArrivalPeriod(e.target.value as "AM" | "PM");
+                        clearField("arrival");
+                      }}
                       className="p-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent w-20"
                     >
                       <option value="AM">AM</option>
                       <option value="PM">PM</option>
                     </select>
                   </div>
+                  {fieldErrorMsg("arrival")}
                 </div>
                 <div>
                   <label className={labelClass}>Special Requests</label>
@@ -453,9 +509,11 @@ function ConfirmBookingContent() {
               <label className="block cursor-pointer">
                 <div
                   className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors ${
-                    idPreview
-                      ? "border-emerald-300 bg-emerald-50"
-                      : "border-gray-300 hover:border-emerald-400 hover:bg-gray-50"
+                    fieldErrors.idPhoto
+                      ? "border-red-400 bg-red-50/50"
+                      : idPreview
+                        ? "border-emerald-300 bg-emerald-50"
+                        : "border-gray-300 hover:border-emerald-400 hover:bg-gray-50"
                   }`}
                 >
                   {idPreview ? (
@@ -495,6 +553,7 @@ function ConfirmBookingContent() {
                   className="hidden"
                 />
               </label>
+              {fieldErrorMsg("idPhoto")}
             </div>
 
             {/* Loyalty: free breakfast card (no room discount) */}
@@ -539,7 +598,10 @@ function ConfirmBookingContent() {
                     type="radio"
                     name="payment"
                     checked={paymentOption === "pay-at-checkin"}
-                    onChange={() => setPaymentOption("pay-at-checkin")}
+                    onChange={() => {
+                      setPaymentOption("pay-at-checkin");
+                      clearField("payment");
+                    }}
                     className="mt-0.5 accent-emerald-700"
                   />
                   <div>
@@ -561,7 +623,10 @@ function ConfirmBookingContent() {
                     type="radio"
                     name="payment"
                     checked={paymentOption === "khalti"}
-                    onChange={() => setPaymentOption("khalti")}
+                    onChange={() => {
+                      setPaymentOption("khalti");
+                      clearField("payment");
+                    }}
                     className="mt-0.5 accent-emerald-700"
                   />
                   <div>
@@ -574,6 +639,7 @@ function ConfirmBookingContent() {
                   </div>
                 </label>
               </div>
+              {fieldErrorMsg("payment")}
             </div>
 
             {/* Error */}

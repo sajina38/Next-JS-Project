@@ -16,6 +16,8 @@ interface RoomData {
   price: string;
   capacity: number;
   image: string | null;
+  /** Primary first, then extra gallery paths from the API (see Room.gallery_images). */
+  images?: string[];
   is_available: boolean;
   room_status?: string;
 }
@@ -29,6 +31,23 @@ function isRoomPubliclyBookable(r: RoomData | null): boolean {
 }
 
 const PLACEHOLDER = "/room1.png";
+
+/** If the API returns only one URL, add a few public images so the thumbnail strip is demonstrable. */
+const DEMO_EXTRA_PHOTOS = ["/room2.png", "/room.png", "/meetingRoom.png"];
+
+/** All image URLs for this room (API order first; optional demo padding). */
+function roomPhotoUrls(room: RoomData): string[] {
+  const api = (room.images ?? []).filter(Boolean);
+  const primary = api.length ? api : [room.image || PLACEHOLDER];
+  const unique = [...new Set(primary)];
+  if (unique.length >= 2) return unique;
+  const out = [...unique];
+  for (const path of DEMO_EXTRA_PHOTOS) {
+    if (!out.includes(path)) out.push(path);
+    if (out.length >= 3) break;
+  }
+  return out;
+}
 
 /** Local calendar date as YYYY-MM-DD (for `<input type="date" min=… />`). */
 function toLocalISODate(d: Date): string {
@@ -122,6 +141,7 @@ export default function RoomDetailPage() {
   const [notFound, setNotFound] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [form, setForm] = useState({ check_in: "", check_out: "", guests: 1 });
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   const todayMin = useMemo(() => toLocalISODate(new Date()), []);
   const defaultCheckoutMin = useMemo(() => addDaysLocal(todayMin, 1), [todayMin]);
@@ -144,9 +164,27 @@ export default function RoomDetailPage() {
     [roomId],
   );
 
+  const photos = useMemo(() => {
+    if (!room) return [PLACEHOLDER];
+    return roomPhotoUrls(room);
+  }, [room]);
+
+  /** First URL is always the room cover; hero uses this only. Gallery uses `selectedPhoto`. */
+  const coverPhoto = photos[0] ?? PLACEHOLDER;
+  const selectedPhoto = photos[activeImageIndex] ?? photos[0];
+  const hasMultiplePhotos = photos.length > 1;
+
   useEffect(() => {
     loadRoom(false);
   }, [loadRoom]);
+
+  useEffect(() => {
+    setActiveImageIndex(0);
+  }, [roomId]);
+
+  useEffect(() => {
+    setActiveImageIndex((i) => Math.min(i, Math.max(0, photos.length - 1)));
+  }, [photos.length]);
 
   useEffect(() => {
     const onVis = () => {
@@ -155,8 +193,6 @@ export default function RoomDetailPage() {
     document.addEventListener("visibilitychange", onVis);
     return () => document.removeEventListener("visibilitychange", onVis);
   }, [loadRoom]);
-
-  const roomImage = room?.image || PLACEHOLDER;
 
   const handleBooking = () => {
     if (!user) {
@@ -213,7 +249,7 @@ export default function RoomDetailPage() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.8 }}
         className="relative h-[400px] sm:h-[480px] md:h-[560px] bg-cover bg-center"
-        style={{ backgroundImage: `url('${roomImage}')` }}
+        style={{ backgroundImage: `url('${coverPhoto}')` }}
       >
         <div className="absolute inset-0 bg-black/55" />
         <div className="relative z-10 h-full flex flex-col items-center justify-center text-white text-center px-6">
@@ -249,15 +285,35 @@ export default function RoomDetailPage() {
         <div className="grid lg:grid-cols-3 gap-10 lg:gap-12">
           {/* Left Column */}
           <div className="lg:col-span-2 space-y-12">
-            {/* Room Image */}
-            <div>
-              <div className="rounded-2xl overflow-hidden aspect-[16/10] shadow-md">
+            {/* Gallery: main image + thumbnails (selected index in state) */}
+            <div className="space-y-3">
+              <div className="rounded-2xl overflow-hidden aspect-[16/10] shadow-md bg-gray-100 ring-1 ring-gray-200/80">
                 <img
-                  src={roomImage}
-                  alt={room.name}
+                  src={selectedPhoto}
+                  alt={`${room.name} — photo ${activeImageIndex + 1} of ${photos.length}`}
                   className="w-full h-full object-cover"
                 />
               </div>
+              {hasMultiplePhotos && (
+                <div className="flex gap-2 overflow-x-auto pb-0.5">
+                  {photos.map((src, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setActiveImageIndex(i)}
+                      className={`flex-shrink-0 w-[4.5rem] h-14 sm:w-24 sm:h-16 rounded-lg overflow-hidden border-2 transition-all ${
+                        i === activeImageIndex
+                          ? "border-emerald-600 shadow-sm"
+                          : "border-transparent opacity-70 hover:opacity-100"
+                      }`}
+                      aria-label={`Show photo ${i + 1}`}
+                      aria-current={i === activeImageIndex ? "true" : undefined}
+                    >
+                      <img src={src} alt="" className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Description */}

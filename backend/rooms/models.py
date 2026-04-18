@@ -99,6 +99,11 @@ class Room(models.Model):
     price = models.DecimalField(max_digits=8, decimal_places=2)
     capacity = models.IntegerField(default=2)
     image = models.ImageField(upload_to="rooms/", blank=True, null=True)
+    gallery_images = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Optional extra photos: list of paths under MEDIA_ROOT, e.g. ["rooms/extra1.jpg"].',
+    )
     room_status = models.CharField(
         max_length=20,
         choices=RoomStatus.choices,

@@ -20,6 +20,18 @@ class RoomAdmin(admin.ModelAdmin):
     list_display = ("room_number", "name", "room_type", "price", "capacity", "room_status", "image_preview")
     list_filter = ("room_type", "room_status")
     search_fields = ("name", "room_number")
+    fields = (
+        "room_number",
+        "room_type",
+        "name",
+        "description",
+        "price",
+        "capacity",
+        "room_status",
+        "image",
+        "gallery_images",
+        "image_preview_large",
+    )
 
     readonly_fields = ("image_preview_large",)
 
