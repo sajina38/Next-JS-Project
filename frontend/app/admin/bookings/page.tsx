@@ -24,6 +24,7 @@ interface BookingRow {
   status: BookingStatus;
   payment_status?: string;
   loyalty_points_redeemed?: number;
+  loyalty_breakfast_card?: boolean;
   created_at: string;
 }
 
@@ -51,7 +52,7 @@ interface CustomerOption {
   email: string;
   first_name: string;
   last_name: string;
-  loyalty_points?: number;
+  loyalty_cards?: number;
 }
 
 const PAYMENT_METHOD_OPTIONS = [
@@ -450,9 +451,9 @@ export default function AdminBookingsPage() {
 
   function customerLabel(c: CustomerOption) {
     const name = [c.first_name, c.last_name].filter(Boolean).join(" ").trim();
-    const pts = c.loyalty_points ?? 0;
+    const cards = c.loyalty_cards ?? 0;
     const base = name ? `${c.username} (${name})` : c.username;
-    return `${base} · ${pts} pts`;
+    return `${base} · ${cards} breakfast card${cards === 1 ? "" : "s"}`;
   }
 
   const selectedCustomer = useMemo(
@@ -496,7 +497,7 @@ export default function AdminBookingsPage() {
           </svg>
           <input
             type="search"
-            placeholder="Search by ID, guest, user, or room…"
+            placeholder="Search by guest, user, or room…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-stone-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600"
@@ -529,7 +530,6 @@ export default function AdminBookingsPage() {
             <table className="w-full text-sm min-w-[1000px]">
               <thead>
                 <tr className="border-b border-stone-100 text-left text-stone-500 text-xs uppercase tracking-wider">
-                  <th className="px-4 py-3 font-semibold">ID</th>
                   <th className="px-4 py-3 font-semibold">Guest</th>
                   <th className="px-4 py-3 font-semibold">Room</th>
                   <th className="px-4 py-3 font-semibold">Dates</th>
@@ -543,7 +543,6 @@ export default function AdminBookingsPage() {
               <tbody className="divide-y divide-stone-100">
                 {filtered.map((b) => (
                   <tr key={b.id} className="hover:bg-stone-50/80 align-top">
-                    <td className="px-4 py-3.5 font-mono text-stone-700">#{b.id}</td>
                     <td className="px-4 py-3.5">
                       <GuestTableCell b={b} />
                     </td>
@@ -832,7 +831,7 @@ export default function AdminBookingsPage() {
                 className="w-full px-3 py-2 rounded-lg border border-stone-200 text-sm"
               />
 
-              {selectedCustomer && selectedCustomer.loyalty_points != null && selectedCustomer.loyalty_points >= 100 ? (
+              {selectedCustomer != null && (selectedCustomer.loyalty_cards ?? 0) >= 1 ? (
                 <label className="flex items-start gap-2 text-sm text-stone-700 cursor-pointer">
                   <input
                     type="checkbox"
@@ -841,8 +840,8 @@ export default function AdminBookingsPage() {
                     className="mt-0.5 rounded border-stone-300 text-emerald-700 focus:ring-emerald-600"
                   />
                   <span>
-                    Redeem loyalty credit for this customer (100 pts = Rs. 100 off per block; needs pre-discount
-                    total ≥ Rs. 100).
+                    Use one breakfast loyalty card for this booking (complimentary breakfast at the hotel; room rate
+                    unchanged).
                   </span>
                 </label>
               ) : null}
@@ -899,7 +898,7 @@ export default function AdminBookingsPage() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 overflow-y-auto">
           <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 border border-stone-200 my-8 max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-bold text-stone-900 mb-1">
-              {viewLoading ? "Loading…" : `Booking #${viewDetail?.id}`}
+              {viewLoading ? "Loading…" : "Booking details"}
             </h3>
             {!viewLoading && viewDetail && (
               <>
@@ -928,7 +927,7 @@ export default function AdminBookingsPage() {
                   <div className="grid grid-cols-[8rem_1fr] gap-2">
                     <dt className="text-stone-500 font-medium">Room</dt>
                     <dd className="text-stone-900">
-                      #{viewDetail.room_number} — {viewDetail.room_type}
+                      Room {viewDetail.room_number} — {viewDetail.room_type}
                       {viewDetail.room_name ? ` (${viewDetail.room_name})` : ""}
                     </dd>
                   </div>
@@ -967,13 +966,16 @@ export default function AdminBookingsPage() {
                     <dt className="text-stone-500 font-medium">Total (NPR)</dt>
                     <dd className="text-stone-900 font-semibold tabular-nums">{viewDetail.total_amount ?? "—"}</dd>
                   </div>
-                  {(viewDetail.loyalty_points_redeemed ?? 0) > 0 ? (
+                  {viewDetail.loyalty_breakfast_card ? (
                     <div className="grid grid-cols-[8rem_1fr] gap-2">
-                      <dt className="text-stone-500 font-medium">Loyalty redeemed</dt>
-                      <dd className="text-stone-900 tabular-nums">
-                        {viewDetail.loyalty_points_redeemed} points (Rs.{" "}
-                        {viewDetail.loyalty_points_redeemed} off at booking)
-                      </dd>
+                      <dt className="text-stone-500 font-medium">Breakfast card</dt>
+                      <dd className="text-stone-900">Requested for this stay</dd>
+                    </div>
+                  ) : null}
+                  {(viewDetail.loyalty_points_redeemed ?? 0) > 0 && !viewDetail.loyalty_breakfast_card ? (
+                    <div className="grid grid-cols-[8rem_1fr] gap-2">
+                      <dt className="text-stone-500 font-medium">Legacy loyalty</dt>
+                      <dd className="text-stone-900 tabular-nums">{viewDetail.loyalty_points_redeemed}</dd>
                     </div>
                   ) : null}
                   <div className="grid grid-cols-[8rem_1fr] gap-2">
@@ -1017,7 +1019,7 @@ export default function AdminBookingsPage() {
       {modal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 overflow-y-auto">
           <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 border border-stone-200 my-8 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg font-bold text-stone-900 mb-1">Edit booking #{modal.id}</h3>
+            <h3 className="text-lg font-bold text-stone-900 mb-1">Edit booking</h3>
             <p className="text-sm text-stone-500 mb-4">
               Assign room (must be available), dates, booking status, and payment status.
             </p>

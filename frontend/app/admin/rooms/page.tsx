@@ -586,8 +586,10 @@ export default function AdminRoomsPage() {
       {editRoom && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 overflow-y-auto">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 border border-stone-200 my-8 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg font-bold text-stone-900 mb-1">Edit room #{editRoom.room_number}</h3>
-            <p className="text-sm text-stone-500 mb-4">Update details and housekeeping status.</p>
+            <h3 className="text-lg font-bold text-stone-900 mb-1">Edit room</h3>
+            <p className="text-sm text-stone-500 mb-4">
+              Room {editRoom.room_number} · update details and housekeeping status.
+            </p>
             <form onSubmit={handleEditSubmit} className="space-y-3">
               <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wide">Room number</label>
               <input

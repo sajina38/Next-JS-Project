@@ -21,6 +21,7 @@ interface Booking {
   payment_status?: string;
   total_amount?: string;
   loyalty_points_redeemed?: number;
+  loyalty_breakfast_card?: boolean;
   guest_name?: string;
   guest_email?: string;
   guest_phone?: string;
@@ -42,7 +43,9 @@ interface ProfileData {
   country: string;
   gender: string;
   role: string;
-  loyalty_points: number;
+  loyalty_cards: number;
+  loyalty_stays_count?: number;
+  loyalty_stays_until_next_card?: number | null;
   date_joined: string;
 }
 
@@ -86,12 +89,12 @@ function ProfileBookingsTab({
   bookings,
   loadingBookings,
   onCancelBooking,
-  loyaltyPoints,
+  loyaltyCards,
 }: {
   bookings: Booking[];
   loadingBookings: boolean;
   onCancelBooking: (id: number) => void;
-  loyaltyPoints?: number;
+  loyaltyCards?: number;
 }) {
   const [openId, setOpenId] = useState<number | null>(null);
 
@@ -218,10 +221,16 @@ function ProfileBookingsTab({
                     }
                   />
                   <DetailField label="Total" value={formatMoney(b.total_amount)} />
-                  {(b.loyalty_points_redeemed ?? 0) > 0 ? (
+                  {b.loyalty_breakfast_card ? (
                     <DetailField
-                      label="Loyalty redeemed"
-                      value={`${b.loyalty_points_redeemed} pts (Rs. ${b.loyalty_points_redeemed} off)`}
+                      label="Breakfast loyalty"
+                      value="Complimentary breakfast card applied for this stay"
+                    />
+                  ) : null}
+                  {(b.loyalty_points_redeemed ?? 0) > 0 && !b.loyalty_breakfast_card ? (
+                    <DetailField
+                      label="Legacy loyalty"
+                      value={`${b.loyalty_points_redeemed} (historical booking credit)`}
                     />
                   ) : null}
                 </div>
@@ -309,10 +318,10 @@ function ProfileBookingsTab({
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">My bookings</h1>
           <p className="text-sm text-gray-600 mt-2">
-            <span className="font-semibold text-emerald-800 tabular-nums">{loyaltyPoints ?? 0}</span> loyalty points
+            <span className="font-semibold text-emerald-800 tabular-nums">{loyaltyCards ?? 0}</span> breakfast{" "}
+            {(loyaltyCards ?? 0) === 1 ? "card" : "cards"}
             <span className="text-gray-400"> · </span>
-            Open the <span className="font-medium text-gray-800">Loyalty</span> section in the sidebar for balance and
-            program rules.
+            Open <span className="font-medium text-gray-800">Loyalty</span> in the sidebar for rules and progress.
           </p>
         </div>
         <Link
@@ -913,24 +922,36 @@ export default function ProfilePage() {
                       Loyalty rewards
                     </h1>
                     <p className="text-sm text-gray-500 mt-2 max-w-xl">
-                      Your Urban Rewards balance and how to earn and redeem points on confirmed stays.
+                      Breakfast cards from completed stays—earn one card per five qualifying stays, use one when you
+                      book for complimentary breakfast at the hotel.
                     </p>
                   </header>
 
                   <div className="space-y-6">
                     <section className="rounded-2xl border border-emerald-200/80 bg-white shadow-sm px-5 sm:px-8 py-6 sm:py-8">
-                      <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-3">Your balance</h2>
+                      <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-3">
+                        Your breakfast cards
+                      </h2>
                       <p className="text-3xl font-bold text-emerald-800 tabular-nums">
-                        {p?.loyalty_points ?? 0}{" "}
-                        <span className="text-lg font-semibold text-gray-600">points</span>
+                        {p?.loyalty_cards ?? 0}{" "}
+                        <span className="text-lg font-semibold text-gray-600">
+                          {(p?.loyalty_cards ?? 0) === 1 ? "card" : "cards"}
+                        </span>
                       </p>
+                      {p?.loyalty_stays_count != null && p?.loyalty_stays_until_next_card != null ? (
+                        <p className="text-sm text-gray-600 mt-3 leading-relaxed">
+                          <span className="font-semibold text-gray-800 tabular-nums">{p.loyalty_stays_count}</span>{" "}
+                          qualifying stay{p.loyalty_stays_count === 1 ? "" : "s"} recorded · next card after{" "}
+                          <span className="font-semibold tabular-nums">{p.loyalty_stays_until_next_card}</span> more.
+                        </p>
+                      ) : null}
                     </section>
 
                     <section className="rounded-2xl border border-stone-200 bg-white shadow-sm px-5 sm:px-8 py-6 sm:py-8">
                       <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-3">Rules</h2>
                       <p className="text-sm text-gray-600 leading-relaxed max-w-2xl">
-                        Earn 1 point per Rs. 50 spent on confirmed stays. Redeem in blocks of 100 points for Rs. 100 off
-                        your next booking (when your total is at least Rs. 100 before discount).
+                        Every five stays that reach confirmed or checkout earn one card. Tick “use breakfast card” on
+                        the booking form to redeem; your room price stays the same—breakfast is honored at the hotel.
                       </p>
                     </section>
 
@@ -1024,7 +1045,7 @@ export default function ProfilePage() {
               bookings={bookings}
               loadingBookings={loadingBookings}
               onCancelBooking={cancelBooking}
-              loyaltyPoints={profile?.loyalty_points}
+              loyaltyCards={profile?.loyalty_cards}
             />
           )}
         </div>

@@ -9,6 +9,7 @@ interface Metrics {
   total_customers: number;
   total_bookings: number;
   total_rooms: number;
+  customer_loyalty_cards_total?: number;
 }
 
 interface RecentBooking {
@@ -39,9 +40,17 @@ interface RoomStatusCountRow {
   count: number;
 }
 
+interface LoyaltyChartsPayload {
+  total_cards_held: number;
+  customers_with_balance: number;
+  customers_no_balance: number;
+  bookings_breakfast_card: number;
+}
+
 interface DashboardChartsPayload {
   bookings_by_status: StatusCountRow[];
   rooms_by_status: RoomStatusCountRow[];
+  loyalty?: LoyaltyChartsPayload;
 }
 
 const BOOKING_STATUS: Record<string, string> = {
@@ -95,7 +104,7 @@ export default function ManagerDashboardPage() {
 
       {data && (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
             <MetricCard
               label="Total Customers"
               value={data.metrics.total_customers}
@@ -126,12 +135,24 @@ export default function ManagerDashboardPage() {
                 </svg>
               }
             />
+            <MetricCard
+              label="Customer breakfast cards"
+              value={data.metrics.customer_loyalty_cards_total ?? 0}
+              iconBg="bg-amber-100"
+              icon={
+                <svg className="w-6 h-6 text-amber-800" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 0 0 5.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 0 0 9.568 3Z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 6h.008v.008H6V6Z" />
+                </svg>
+              }
+            />
           </div>
 
           {data.charts && (
             <DashboardChartsSection
               bookingsByStatus={data.charts.bookings_by_status ?? []}
               roomsByStatus={data.charts.rooms_by_status ?? []}
+              loyalty={data.charts.loyalty ?? null}
             />
           )}
 

@@ -71,6 +71,9 @@ class AdminUpdateUserSerializer(serializers.ModelSerializer):
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
+    loyalty_stays_count = serializers.SerializerMethodField()
+    loyalty_stays_until_next_card = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = (
@@ -84,10 +87,37 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "country",
             "gender",
             "role",
-            "loyalty_points",
+            "loyalty_cards",
+            "loyalty_stays_count",
+            "loyalty_stays_until_next_card",
             "date_joined",
         )
-        read_only_fields = ("id", "username", "role", "loyalty_points", "date_joined")
+        read_only_fields = (
+            "id",
+            "username",
+            "role",
+            "loyalty_cards",
+            "loyalty_stays_count",
+            "loyalty_stays_until_next_card",
+            "date_joined",
+        )
+
+    def get_loyalty_stays_count(self, obj):
+        from bookings.models import Booking
+
+        if getattr(obj, "role", None) != User.Role.CUSTOMER:
+            return 0
+        return Booking.objects.filter(
+            user=obj,
+            status__in=[Booking.Status.CONFIRMED, Booking.Status.CHECKOUT],
+        ).count()
+
+    def get_loyalty_stays_until_next_card(self, obj):
+        if getattr(obj, "role", None) != User.Role.CUSTOMER:
+            return None
+        n = self.get_loyalty_stays_count(obj)
+        rem = n % 5
+        return 5 - rem if rem else 5
 
     def to_internal_value(self, data):
         # JSON/form clients often send "" for empty date; DRF DateField rejects that string.

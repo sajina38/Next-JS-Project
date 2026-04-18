@@ -8,8 +8,10 @@ import api from "@/lib/api";
 export default function LoyaltyPage() {
   const { user, loading: authLoading } = useAuth();
   const [mounted, setMounted] = useState(false);
-  const [points, setPoints] = useState<number | null>(null);
-  const [loadingPoints, setLoadingPoints] = useState(false);
+  const [cards, setCards] = useState<number | null>(null);
+  const [staysCount, setStaysCount] = useState<number | null>(null);
+  const [untilNext, setUntilNext] = useState<number | null>(null);
+  const [loadingLoyalty, setLoadingLoyalty] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -17,15 +19,31 @@ export default function LoyaltyPage() {
 
   useEffect(() => {
     if (!mounted || !user) {
-      setPoints(null);
+      setCards(null);
+      setStaysCount(null);
+      setUntilNext(null);
       return;
     }
-    setLoadingPoints(true);
+    setLoadingLoyalty(true);
     api
-      .get<{ loyalty_points?: number }>("/auth/profile/")
-      .then((res) => setPoints(res.data.loyalty_points ?? 0))
-      .catch(() => setPoints(null))
-      .finally(() => setLoadingPoints(false));
+      .get<{
+        loyalty_cards?: number;
+        loyalty_stays_count?: number;
+        loyalty_stays_until_next_card?: number | null;
+      }>("/auth/profile/")
+      .then((res) => {
+        setCards(res.data.loyalty_cards ?? 0);
+        setStaysCount(res.data.loyalty_stays_count ?? 0);
+        setUntilNext(
+          res.data.loyalty_stays_until_next_card != null ? res.data.loyalty_stays_until_next_card : null,
+        );
+      })
+      .catch(() => {
+        setCards(null);
+        setStaysCount(null);
+        setUntilNext(null);
+      })
+      .finally(() => setLoadingLoyalty(false));
   }, [mounted, user]);
 
   const authReady = mounted && !authLoading;
@@ -36,7 +54,8 @@ export default function LoyaltyPage() {
         <p className="text-xs font-semibold uppercase tracking-widest text-emerald-700 mb-2">Urban Rewards</p>
         <h1 className="text-3xl md:text-4xl font-bold text-gray-900 tracking-tight mb-4">Loyalty program</h1>
         <p className="text-gray-600 text-lg leading-relaxed mb-10">
-          Stay with us, earn points on every confirmed booking, and save on your next visit.
+          Every five completed stays earns one complimentary breakfast card you can apply when you book your next
+          visit.
         </p>
 
         {!authReady && (
@@ -50,13 +69,26 @@ export default function LoyaltyPage() {
 
         {authReady && user && (
           <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 px-6 py-6 mb-10">
-            <p className="text-sm font-medium text-emerald-900 mb-1">Your balance</p>
-            {loadingPoints ? (
+            <p className="text-sm font-medium text-emerald-900 mb-1">Your breakfast cards</p>
+            {loadingLoyalty ? (
               <div className="h-9 w-32 bg-emerald-100/80 rounded-lg animate-pulse" />
             ) : (
-              <p className="text-3xl font-bold text-emerald-900 tabular-nums">
-                {points ?? 0} <span className="text-lg font-semibold text-emerald-800">points</span>
-              </p>
+              <>
+                <p className="text-3xl font-bold text-emerald-900 tabular-nums">
+                  {cards ?? 0}{" "}
+                  <span className="text-lg font-semibold text-emerald-800">
+                    {(cards ?? 0) === 1 ? "card" : "cards"}
+                  </span>
+                </p>
+                {staysCount != null && untilNext != null ? (
+                  <p className="text-sm text-emerald-800/90 mt-2">
+                    <span className="font-semibold tabular-nums">{staysCount}</span> qualifying stay
+                    {staysCount === 1 ? "" : "s"} so far · next card after{" "}
+                    <span className="font-semibold tabular-nums">{untilNext}</span> more qualifying stay
+                    {untilNext === 1 ? "" : "s"}.
+                  </p>
+                ) : null}
+              </>
             )}
             <Link
               href="/profile"
@@ -69,7 +101,7 @@ export default function LoyaltyPage() {
 
         {authReady && !user && (
           <div className="rounded-2xl border border-gray-200 bg-white px-6 py-5 mb-10 shadow-sm">
-            <p className="text-gray-700 text-sm mb-3">Sign in to see your points balance and redeem on checkout.</p>
+            <p className="text-gray-700 text-sm mb-3">Sign in to see your breakfast cards and apply one when you book.</p>
             <div className="flex flex-wrap gap-3">
               <Link
                 href="/login"
@@ -95,10 +127,11 @@ export default function LoyaltyPage() {
                 1
               </span>
               <div>
-                <p className="font-semibold text-gray-900">Earn points</p>
+                <p className="font-semibold text-gray-900">Count qualifying stays</p>
                 <p className="text-sm leading-relaxed mt-1">
-                  When your booking is <strong>confirmed</strong> (after online payment or when the hotel confirms a pay-at-desk stay), you earn{" "}
-                  <strong>1 point for every Rs. 50</strong> spent on that booking&apos;s total.
+                  Each stay that reaches <strong>confirmed</strong> or <strong>checkout</strong> counts toward your
+                  total. After every <strong>5</strong> such stays, you receive <strong>1 breakfast card</strong> in
+                  your account.
                 </p>
               </div>
             </li>
@@ -107,10 +140,10 @@ export default function LoyaltyPage() {
                 2
               </span>
               <div>
-                <p className="font-semibold text-gray-900">Redeem on your next booking</p>
+                <p className="font-semibold text-gray-900">Use a card when you book</p>
                 <p className="text-sm leading-relaxed mt-1">
-                  With <strong>100 points or more</strong>, you can apply loyalty credit when you book:{" "}
-                  <strong>100 points = Rs. 100 off</strong> per block. Discounts apply in full Rs. 100 steps and cannot exceed your stay total.
+                  On the booking form, tick <strong>Use one breakfast card</strong> if you have a balance. Breakfast is
+                  complimentary at the hotel; your <strong>room rate is unchanged</strong>.
                 </p>
               </div>
             </li>
@@ -121,7 +154,11 @@ export default function LoyaltyPage() {
               <div>
                 <p className="font-semibold text-gray-900">Track everything</p>
                 <p className="text-sm leading-relaxed mt-1">
-                  Your balance appears here and on <Link href="/profile" className="text-emerald-700 font-semibold hover:underline">My profile</Link>. Each booking shows any loyalty credit you used.
+                  Cards and progress appear here and on{" "}
+                  <Link href="/profile" className="text-emerald-700 font-semibold hover:underline">
+                    My profile
+                  </Link>
+                  . Each booking notes when a breakfast card was requested.
                 </p>
               </div>
             </li>
@@ -131,9 +168,9 @@ export default function LoyaltyPage() {
         <section className="rounded-2xl border border-gray-100 bg-gray-50/80 px-6 py-6 mb-10">
           <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-3">Good to know</h2>
           <ul className="text-sm text-gray-600 space-y-2 list-disc list-inside">
-            <li>Points are added only once per confirmed booking.</li>
-            <li>Cancelled stays do not earn points.</li>
-            <li>Redeem when you complete the booking form (checkbox on checkout).</li>
+            <li>Cards are recalculated from your stay history; cancelled bookings do not count.</li>
+            <li>Using a card on a booking reduces your stored balance by one.</li>
+            <li>Apply a card on the booking confirmation page before you submit.</li>
           </ul>
         </section>
 

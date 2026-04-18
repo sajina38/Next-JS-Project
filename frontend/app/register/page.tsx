@@ -49,9 +49,11 @@ export default function RegisterPage() {
         err &&
         typeof err === "object" &&
         "response" in err &&
-        (err as { response?: { data?: Record<string, string[]> } }).response?.data
+        (err as { response?: { data?: Record<string, string[]> } }).response
+          ?.data
       ) {
-        const data = (err as { response: { data: Record<string, string[]> } }).response.data;
+        const data = (err as { response: { data: Record<string, string[]> } })
+          .response.data;
         const first = Object.values(data)[0];
         setError(Array.isArray(first) ? first[0] : String(first));
       } else {
@@ -86,10 +88,9 @@ export default function RegisterPage() {
               Experience the art of modern luxury
             </h2>
             <p className="text-white/90 text-lg max-w-md leading-relaxed">
-              Join our exclusive circle and unlock a world of bespoke hospitality,
-              curated experiences, and member-only rewards.
+              Join our exclusive circle and unlock a world of bespoke
+              hospitality, curated experiences, and member-only rewards.
             </p>
-
           </div>
         </div>
       </div>

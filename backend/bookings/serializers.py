@@ -8,10 +8,7 @@ from rest_framework import serializers
 
 from rooms.models import Room
 
-from .loyalty import (
-    apply_user_loyalty_redemption_if_requested,
-    redemption_discount_and_points,
-)
+from .loyalty import available_breakfast_cards, sync_user_loyalty_cards
 from .models import Booking, validate_booking_status_transition
 from .room_sync import room_has_schedule_blocking_conflict
 
@@ -50,7 +47,12 @@ class BookingSerializer(serializers.ModelSerializer):
     room_name = serializers.CharField(source="room.name", read_only=True)
     room_type = serializers.CharField(source="room.room_type", read_only=True)
     username = serializers.CharField(source="user.username", read_only=True)
-    redeem_loyalty = serializers.BooleanField(required=False, default=False, write_only=True)
+    redeem_loyalty = serializers.BooleanField(
+        required=False,
+        default=False,
+        write_only=True,
+        help_text="Use one breakfast loyalty card on this booking (no room discount in the app).",
+    )
 
     class Meta:
         model = Booking
@@ -78,6 +80,7 @@ class BookingSerializer(serializers.ModelSerializer):
             "payment_status",
             "total_amount",
             "loyalty_points_redeemed",
+            "loyalty_breakfast_card",
             "points_added",
             "status",
             "created_at",
@@ -91,6 +94,7 @@ class BookingSerializer(serializers.ModelSerializer):
             "payment_status",
             "total_amount",
             "loyalty_points_redeemed",
+            "loyalty_breakfast_card",
             "points_added",
         ]
 
@@ -113,13 +117,12 @@ class BookingSerializer(serializers.ModelSerializer):
         check_in = validated_data["check_in"]
         check_out = validated_data["check_out"]
         gross = _booking_gross_total(room, check_in, check_out)
-        final_total, redeemed = apply_user_loyalty_redemption_if_requested(user, gross, redeem)
-        if redeem and redeemed == 0:
+        if redeem and available_breakfast_cards(user.pk) < 1:
             raise serializers.ValidationError(
                 {
                     "redeem_loyalty": (
-                        "Loyalty redemption could not be applied. You need at least 100 points and "
-                        "a pre-discount total of at least Rs. 100."
+                        "No breakfast loyalty card is available. Earn one free breakfast card "
+                        "for every 5 completed stays (confirmed or checked out)."
                     ),
                 }
             )
@@ -127,9 +130,11 @@ class BookingSerializer(serializers.ModelSerializer):
             **validated_data,
             user=user,
             status=Booking.Status.PENDING,
-            total_amount=final_total,
-            loyalty_points_redeemed=redeemed,
+            total_amount=gross,
+            loyalty_points_redeemed=0,
+            loyalty_breakfast_card=bool(redeem),
         )
+        sync_user_loyalty_cards(user.pk)
         return booking
 
     def validate(self, data):
@@ -164,15 +169,12 @@ class BookingSerializer(serializers.ModelSerializer):
 
         request = self.context.get("request")
         if data.get("redeem_loyalty") and request and request.user.is_authenticated and room and check_in and check_out:
-            gross = _booking_gross_total(room, check_in, check_out)
             request.user.refresh_from_db()
-            _, pts = redemption_discount_and_points(request.user.loyalty_points, gross)
-            if pts <= 0:
+            if available_breakfast_cards(request.user.pk) < 1:
                 raise serializers.ValidationError(
                     {
                         "redeem_loyalty": (
-                            "You need at least 100 points and a booking total of at least Rs. 100 "
-                            "before discount to use loyalty credit."
+                            "No breakfast loyalty card is available yet. Complete 5 stays to earn a card."
                         ),
                     }
                 )
@@ -327,14 +329,12 @@ class StaffBookingCreateSerializer(serializers.ModelSerializer):
                 )
         cust = data.get("user")
         if data.get("redeem_loyalty") and cust and room and check_in and check_out:
-            gross = _booking_gross_total(room, check_in, check_out)
-            _, pts = redemption_discount_and_points(cust.loyalty_points, gross)
-            if pts <= 0:
+            if available_breakfast_cards(cust.pk) < 1:
                 raise serializers.ValidationError(
                     {
                         "redeem_loyalty": (
-                            "Customer needs at least 100 points and a booking total of at least Rs. 100 "
-                            "before discount to redeem loyalty credit."
+                            "This customer has no breakfast loyalty card available "
+                            "(one card per 5 completed stays)."
                         ),
                     }
                 )
@@ -348,21 +348,22 @@ class StaffBookingCreateSerializer(serializers.ModelSerializer):
         check_in = validated_data["check_in"]
         check_out = validated_data["check_out"]
         gross = _booking_gross_total(room, check_in, check_out)
-        final_total, redeemed = apply_user_loyalty_redemption_if_requested(target, gross, redeem)
-        if redeem and redeemed == 0:
+        if redeem and available_breakfast_cards(target.pk) < 1:
             raise serializers.ValidationError(
                 {
                     "redeem_loyalty": (
-                        "Loyalty redemption could not be applied. Refresh customer points and try again."
+                        "This customer has no breakfast loyalty card available."
                     ),
                 }
             )
         booking = Booking.objects.create(
             **validated_data,
             status=Booking.Status.PENDING,
-            total_amount=final_total,
-            loyalty_points_redeemed=redeemed,
+            total_amount=gross,
+            loyalty_points_redeemed=0,
+            loyalty_breakfast_card=bool(redeem),
         )
+        sync_user_loyalty_cards(target.pk)
         return booking
 
 

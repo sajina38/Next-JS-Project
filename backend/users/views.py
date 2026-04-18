@@ -101,7 +101,7 @@ class LoginView(APIView):
                         "last_name": user.last_name,
                         "phone_number": user.phone_number,
                         "role": user.role,
-                        "loyalty_points": user.loyalty_points,
+                        "loyalty_cards": user.loyalty_cards,
                     },
                 },
                 status=status.HTTP_200_OK,
@@ -240,6 +240,16 @@ class ManagerDashboardView(APIView):
         total_bookings = Booking.objects.count()
         total_rooms = Room.objects.count()
 
+        from django.db.models import Count, Sum
+
+        customer_cards = (
+            User.objects.filter(role=User.Role.CUSTOMER).aggregate(s=Sum("loyalty_cards")).get("s") or 0
+        )
+        customers_with_balance = User.objects.filter(
+            role=User.Role.CUSTOMER, loyalty_cards__gt=0
+        ).count()
+        breakfast_bookings = Booking.objects.filter(loyalty_breakfast_card=True).count()
+
         recent_qs = (
             Booking.objects.select_related("room", "user")
             .order_by("-created_at")[:8]
@@ -269,8 +279,6 @@ class ManagerDashboardView(APIView):
             }
             for r in rooms_qs
         ]
-
-        from django.db.models import Count
 
         bookings_by_status = list(
             Booking.objects.values("status")
@@ -289,12 +297,19 @@ class ManagerDashboardView(APIView):
                     "total_customers": total_customers,
                     "total_bookings": total_bookings,
                     "total_rooms": total_rooms,
+                    "customer_loyalty_cards_total": int(customer_cards),
                 },
                 "recent_bookings": recent_bookings,
                 "rooms_status": rooms_status,
                 "charts": {
                     "bookings_by_status": bookings_by_status,
                     "rooms_by_status": rooms_by_status,
+                    "loyalty": {
+                        "total_cards_held": int(customer_cards),
+                        "customers_with_balance": customers_with_balance,
+                        "customers_no_balance": max(0, total_customers - customers_with_balance),
+                        "bookings_breakfast_card": breakfast_bookings,
+                    },
                 },
             }
         )
@@ -312,6 +327,16 @@ class AdminDashboardView(APIView):
         total_customers = User.objects.filter(role=User.Role.CUSTOMER).count()
         total_bookings = Booking.objects.count()
         total_rooms = Room.objects.count()
+
+        from django.db.models import Count, Sum
+
+        customer_cards = (
+            User.objects.filter(role=User.Role.CUSTOMER).aggregate(s=Sum("loyalty_cards")).get("s") or 0
+        )
+        customers_with_balance = User.objects.filter(
+            role=User.Role.CUSTOMER, loyalty_cards__gt=0
+        ).count()
+        breakfast_bookings = Booking.objects.filter(loyalty_breakfast_card=True).count()
 
         recent_qs = (
             Booking.objects.select_related("room", "user")
@@ -342,8 +367,6 @@ class AdminDashboardView(APIView):
             }
             for r in rooms_qs
         ]
-
-        from django.db.models import Count
 
         bookings_by_status = list(
             Booking.objects.values("status")
@@ -369,6 +392,7 @@ class AdminDashboardView(APIView):
                     "total_customers": total_customers,
                     "total_bookings": total_bookings,
                     "total_rooms": total_rooms,
+                    "customer_loyalty_cards_total": int(customer_cards),
                 },
                 "recent_bookings": recent_bookings,
                 "rooms_status": rooms_status,
@@ -376,6 +400,12 @@ class AdminDashboardView(APIView):
                     "bookings_by_status": bookings_by_status,
                     "rooms_by_status": rooms_by_status,
                     "users_by_role": users_by_role,
+                    "loyalty": {
+                        "total_cards_held": int(customer_cards),
+                        "customers_with_balance": customers_with_balance,
+                        "customers_no_balance": max(0, total_customers - customers_with_balance),
+                        "bookings_breakfast_card": breakfast_bookings,
+                    },
                 },
             }
         )
@@ -524,7 +554,7 @@ class AdminUsersView(APIView):
             "is_active",
             "first_name",
             "last_name",
-            "loyalty_points",
+            "loyalty_cards",
         )
         return Response(list(users))
 
@@ -541,7 +571,7 @@ class AdminUsersView(APIView):
                 "first_name": user.first_name,
                 "last_name": user.last_name,
                 "is_active": user.is_active,
-                "loyalty_points": user.loyalty_points,
+                "loyalty_cards": user.loyalty_cards,
             },
             status=status.HTTP_201_CREATED,
         )
@@ -591,7 +621,7 @@ class AdminUserDetailView(APIView):
                 "first_name": user.first_name,
                 "last_name": user.last_name,
                 "is_active": user.is_active,
-                "loyalty_points": user.loyalty_points,
+                "loyalty_cards": user.loyalty_cards,
             },
         )
 

@@ -215,7 +215,7 @@ export default function AdminPaymentsPage() {
           </svg>
           <input
             type="search"
-            placeholder="Search by ID, guest, room, or payment…"
+            placeholder="Search by guest, room, or payment…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-stone-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600"
@@ -245,7 +245,6 @@ export default function AdminPaymentsPage() {
             <table className="w-full text-sm min-w-[960px]">
               <thead>
                 <tr className="border-b border-stone-100 text-left text-stone-500 text-xs uppercase tracking-wider">
-                  <th className="px-4 py-3 font-semibold">ID</th>
                   <th className="px-4 py-3 font-semibold">Guest</th>
                   <th className="px-4 py-3 font-semibold">Room</th>
                   <th className="px-4 py-3 font-semibold">Dates</th>
@@ -261,7 +260,6 @@ export default function AdminPaymentsPage() {
               <tbody className="divide-y divide-stone-100">
                 {filtered.map((r) => (
                   <tr key={r.id} className="hover:bg-stone-50/80 align-top">
-                    <td className="px-4 py-3.5 font-mono text-stone-700">#{r.id}</td>
                     <td className="px-4 py-3.5">
                       <GuestTableCell b={r} />
                     </td>
@@ -369,7 +367,7 @@ export default function AdminPaymentsPage() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 overflow-y-auto">
           <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 border border-stone-200 my-8 max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-bold text-stone-900 mb-1">
-              {viewLoading ? "Loading…" : `Payment · booking #${viewDetail?.id}`}
+              {viewLoading ? "Loading…" : "Payment details"}
             </h3>
             {!viewLoading && viewDetail && (
               <>
@@ -398,7 +396,7 @@ export default function AdminPaymentsPage() {
                   <div className="grid grid-cols-[8rem_1fr] gap-2">
                     <dt className="text-stone-500 font-medium">Room</dt>
                     <dd className="text-stone-900">
-                      #{viewDetail.room_number}
+                      Room {viewDetail.room_number}
                       {viewDetail.room_type || viewDetail.room_name
                         ? ` · ${viewDetail.room_type || viewDetail.room_name}`
                         : ""}
@@ -479,7 +477,7 @@ export default function AdminPaymentsPage() {
       {modal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 overflow-y-auto">
           <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 border border-stone-200 my-8 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg font-bold text-stone-900 mb-1">Edit payment · booking #{modal.id}</h3>
+            <h3 className="text-lg font-bold text-stone-900 mb-1">Edit payment</h3>
             <p className="text-sm text-stone-500 mb-4">
               Room {modal.room_number}
               {(modal.room_type || modal.room_name) ? ` · ${modal.room_type || modal.room_name}` : ""} ·{" "}

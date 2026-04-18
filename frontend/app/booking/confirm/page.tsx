@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
@@ -72,14 +72,6 @@ function isValidGuestPhone(phone: string): boolean {
   return digits.length >= 9 && digits.length <= 15;
 }
 
-/** Matches backend: 100 pts = Rs. 100 off, capped by gross total in Rs. 100 blocks. */
-function previewLoyaltyDiscount(loyaltyPoints: number, gross: number) {
-  if (loyaltyPoints < 100 || gross < 100) return 0;
-  const blocksUser = Math.floor(loyaltyPoints / 100);
-  const blocksFit = Math.floor(gross / 100);
-  return Math.min(blocksUser, blocksFit) * 100;
-}
-
 function ConfirmBookingContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -119,8 +111,8 @@ function ConfirmBookingContent() {
   // Payment
   const [paymentOption, setPaymentOption] = useState<PaymentOption>("pay-at-checkin");
 
-  const [loyaltyPoints, setLoyaltyPoints] = useState(0);
-  const [redeemLoyalty, setRedeemLoyalty] = useState(false);
+  const [loyaltyCards, setLoyaltyCards] = useState(0);
+  const [useBreakfastCard, setUseBreakfastCard] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -140,9 +132,9 @@ function ConfirmBookingContent() {
   useEffect(() => {
     if (!user) return;
     api
-      .get<{ loyalty_points?: number }>("/auth/profile/")
-      .then((res) => setLoyaltyPoints(res.data.loyalty_points ?? 0))
-      .catch(() => setLoyaltyPoints(0));
+      .get<{ loyalty_cards?: number }>("/auth/profile/")
+      .then((res) => setLoyaltyCards(res.data.loyalty_cards ?? 0))
+      .catch(() => setLoyaltyCards(0));
   }, [user]);
 
   useEffect(() => {
@@ -185,12 +177,6 @@ function ConfirmBookingContent() {
       : 0;
   const pricePerNight = room ? parseFloat(room.price) : 0;
   const totalPrice = nights * pricePerNight;
-
-  const loyaltyDiscount = useMemo(
-    () => (redeemLoyalty ? previewLoyaltyDiscount(loyaltyPoints, totalPrice) : 0),
-    [redeemLoyalty, loyaltyPoints, totalPrice],
-  );
-  const payableTotal = Math.max(0, totalPrice - loyaltyDiscount);
 
   const get24HourTime = () => {
     let h = parseInt(arrivalHour);
@@ -235,9 +221,9 @@ function ConfirmBookingContent() {
       setError("Please select a payment option.");
       return;
     }
-    if (paymentOption === "khalti" && payableTotal < 10) {
+    if (paymentOption === "khalti" && totalPrice < 10) {
       setError(
-        "After loyalty discount the total is below Rs. 10, which Khalti cannot charge. Uncheck loyalty credit or choose more nights.",
+        "Khalti cannot charge amounts below Rs. 10. Choose more nights or pay at check-in.",
       );
       return;
     }
@@ -258,7 +244,7 @@ function ConfirmBookingContent() {
       formData.append("arrival_time", get24HourTime());
       formData.append("special_requests", specialRequests);
       formData.append("payment_method", paymentOption);
-      formData.append("redeem_loyalty", redeemLoyalty ? "true" : "false");
+      formData.append("redeem_loyalty", useBreakfastCard ? "true" : "false");
       if (idPhoto) {
         formData.append("id_photo", idPhoto);
       }
@@ -511,24 +497,24 @@ function ConfirmBookingContent() {
               </label>
             </div>
 
-            {/* Loyalty */}
-            {loyaltyPoints >= 100 && totalPrice >= 100 ? (
+            {/* Loyalty: free breakfast card (no room discount) */}
+            {loyaltyCards >= 1 ? (
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                <h2 className="text-lg font-bold text-gray-900 mb-2">Loyalty credit</h2>
+                <h2 className="text-lg font-bold text-gray-900 mb-2">Breakfast loyalty card</h2>
                 <p className="text-gray-500 text-sm mb-4">
-                  You have <span className="font-semibold text-gray-800">{loyaltyPoints} points</span>. Redeem in
-                  blocks of 100 points for Rs. 100 off each (up to your stay total).
+                  You have <span className="font-semibold text-gray-800">{loyaltyCards}</span>{" "}
+                  {loyaltyCards === 1 ? "card" : "cards"} from completed stays (1 card per 5 stays). Use one on this
+                  visit for a complimentary breakfast at the hotel—your room total is unchanged.
                 </p>
                 <label className="flex items-start gap-3 cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={redeemLoyalty}
-                    onChange={(e) => setRedeemLoyalty(e.target.checked)}
+                    checked={useBreakfastCard}
+                    onChange={(e) => setUseBreakfastCard(e.target.checked)}
                     className="mt-1 rounded border-gray-300 text-emerald-700 focus:ring-emerald-600"
                   />
                   <span className="text-sm text-gray-800 leading-snug">
-                    Apply loyalty discount to this booking (up to Rs.{" "}
-                    {previewLoyaltyDiscount(loyaltyPoints, totalPrice).toLocaleString()} off).
+                    Use one breakfast card for this stay (front desk will confirm at check-in).
                   </span>
                 </label>
               </div>
@@ -660,10 +646,10 @@ function ConfirmBookingContent() {
                       Rs. {totalPrice.toLocaleString()}
                     </span>
                   </div>
-                  {loyaltyDiscount > 0 ? (
-                    <div className="flex justify-between text-emerald-800">
-                      <span>Loyalty discount</span>
-                      <span className="font-medium">− Rs. {loyaltyDiscount.toLocaleString()}</span>
+                  {useBreakfastCard ? (
+                    <div className="flex justify-between text-amber-800 text-xs">
+                      <span>Breakfast card</span>
+                      <span className="font-medium">Complimentary breakfast (room rate unchanged)</span>
                     </div>
                   ) : null}
                 </div>
@@ -673,7 +659,7 @@ function ConfirmBookingContent() {
                 <div className="flex justify-between items-baseline">
                   <span className="text-base font-bold text-gray-900">Total</span>
                   <span className="text-xl font-bold text-emerald-700">
-                    Rs. {payableTotal.toLocaleString()}
+                    Rs. {totalPrice.toLocaleString()}
                   </span>
                 </div>
 

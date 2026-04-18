@@ -19,7 +19,7 @@ interface User {
   last_name: string;
   phone_number: string;
   role: "admin" | "manager" | "customer";
-  loyalty_points?: number;
+  loyalty_cards?: number;
 }
 
 interface AuthContextType {

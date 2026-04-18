@@ -9,7 +9,7 @@ from users.permissions import IsAdminOrManager
 
 from .models import Booking, validate_booking_status_transition
 from .email_notify import send_booking_confirmation_email
-from .loyalty import grant_loyalty_points_when_confirmed
+from .loyalty import grant_loyalty_points_when_confirmed, sync_user_loyalty_cards
 from .room_sync import (
     recompute_room_status,
     refresh_bookings_past_checkout,
@@ -35,7 +35,7 @@ class StaffCustomerListView(APIView):
         rows = (
             User.objects.filter(role=User.Role.CUSTOMER, is_active=True)
             .order_by("username")
-            .values("id", "username", "email", "first_name", "last_name", "loyalty_points")
+            .values("id", "username", "email", "first_name", "last_name", "loyalty_cards")
         )
         return Response(list(rows))
 
@@ -56,7 +56,7 @@ class StaffCustomerCreateView(APIView):
                 "email": user.email,
                 "first_name": user.first_name,
                 "last_name": user.last_name,
-                "loyalty_points": user.loyalty_points,
+                "loyalty_cards": user.loyalty_cards,
             },
             status=status.HTTP_201_CREATED,
         )
@@ -149,6 +149,8 @@ class BookingDetailView(APIView):
             if old_status != Booking.Status.CONFIRMED and booking.status == Booking.Status.CONFIRMED:
                 send_booking_confirmation_email(booking)
                 grant_loyalty_points_when_confirmed(booking, old_status)
+            else:
+                sync_user_loyalty_cards(booking.user_id)
             return Response(BookingSerializer(booking).data)
 
         new_status = request.data.get("status")
@@ -177,6 +179,7 @@ class BookingDetailView(APIView):
         booking.status = new_status
         booking.save(update_fields=["status"])
         sync_room_status_after_booking_save(booking)
+        sync_user_loyalty_cards(booking.user_id)
         return Response(BookingSerializer(booking).data)
 
     def delete(self, request, pk):
@@ -187,6 +190,8 @@ class BookingDetailView(APIView):
             return Response({"error": "Booking not found."}, status=status.HTTP_404_NOT_FOUND)
 
         room = booking.room
+        uid = booking.user_id
         booking.delete()
         sync_room_after_booking_deleted(room)
+        sync_user_loyalty_cards(uid)
         return Response(status=status.HTTP_204_NO_CONTENT)

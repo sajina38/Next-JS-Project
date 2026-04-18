@@ -36,7 +36,7 @@ const HERO_CONFIG: Record<
     image: "/loyalty-hero.svg",
     title: "Urban Rewards",
     description:
-      "Earn points on every confirmed stay and redeem them for savings on your next booking. Simple, transparent, guest-first.",
+      "One complimentary breakfast card for every five completed stays—save it for your next visit and tick the box when you book.",
   },
   "/about": {
     image: "/meetingRoom.png",
@@ -49,6 +49,18 @@ const HERO_CONFIG: Record<
     title: "Get in Touch",
     description:
       "We'd love to hear from you. Reach out for reservations, inquiries, or to plan your perfect stay.",
+  },
+  "/privacy-policy": {
+    image: "/meetingRoom.png",
+    title: "Privacy Policy",
+    description:
+      "How we collect, use, and protect your information when you use our website and services.",
+  },
+  "/terms-of-service": {
+    image: "/meetingRoom.png",
+    title: "Terms of Service",
+    description:
+      "The rules that apply when you use our website, accounts, and booking services.",
   },
   "/booking": {
     image: "/room2.png",

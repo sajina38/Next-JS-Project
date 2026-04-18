@@ -86,7 +86,11 @@ class Booking(models.Model):
     )
     loyalty_points_redeemed = models.PositiveIntegerField(
         default=0,
-        help_text="Points deducted when this booking was created (100 pts = Rs. 100 off).",
+        help_text="Legacy field; kept zero. Use loyalty_breakfast_card for breakfast redemption.",
+    )
+    loyalty_breakfast_card = models.BooleanField(
+        default=False,
+        help_text="Guest requested to use one breakfast loyalty card on this booking (honoured at the hotel).",
     )
     status = models.CharField(
         max_length=20,

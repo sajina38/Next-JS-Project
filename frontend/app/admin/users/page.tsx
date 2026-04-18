@@ -12,7 +12,7 @@ interface AdminUser {
   is_active: boolean;
   first_name: string;
   last_name: string;
-  loyalty_points?: number;
+  loyalty_cards?: number;
 }
 
 const ROLE_BADGE: Record<string, string> = {
@@ -232,7 +232,7 @@ export default function AdminUsersPage() {
                   <th className="px-5 py-3 font-semibold">Name</th>
                   <th className="px-5 py-3 font-semibold">Email</th>
                   <th className="px-5 py-3 font-semibold">Role</th>
-                  <th className="px-5 py-3 font-semibold tabular-nums">Loyalty pts</th>
+                  <th className="px-5 py-3 font-semibold tabular-nums">Breakfast cards</th>
                   <th className="px-5 py-3 font-semibold w-[140px]">Actions</th>
                 </tr>
               </thead>
@@ -250,7 +250,7 @@ export default function AdminUsersPage() {
                         {u.role}
                       </span>
                     </td>
-                    <td className="px-5 py-3.5 text-stone-700 tabular-nums">{u.loyalty_points ?? 0}</td>
+                    <td className="px-5 py-3.5 text-stone-700 tabular-nums">{u.loyalty_cards ?? 0}</td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-1">
                         <button
@@ -311,7 +311,7 @@ export default function AdminUsersPage() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 overflow-y-auto">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 border border-stone-200 my-8">
             <h3 className="text-lg font-bold text-stone-900 mb-1">Edit user</h3>
-            <p className="text-sm text-stone-500 mb-4">Account #{editUser.id}</p>
+            <p className="text-sm text-stone-500 mb-4">@{editUser.username}</p>
             <form onSubmit={handleEditSubmit} className="space-y-3">
               <input
                 required
@@ -397,7 +397,7 @@ export default function AdminUsersPage() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 overflow-y-auto">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 border border-stone-200 my-8">
             <h3 className="text-lg font-bold text-stone-900 mb-1">User details</h3>
-            <p className="text-sm text-stone-500 mb-4">Account #{viewUser.id}</p>
+            <p className="text-sm text-stone-500 mb-4">@{viewUser.username}</p>
             <dl className="space-y-3 text-sm border-t border-stone-100 pt-4">
               <div className="grid grid-cols-[7rem_1fr] gap-2">
                 <dt className="text-stone-500 font-medium">Username</dt>
@@ -420,8 +420,8 @@ export default function AdminUsersPage() {
                 <dd className="text-stone-900">{viewUser.is_active ? "Active" : "Inactive"}</dd>
               </div>
               <div className="grid grid-cols-[7rem_1fr] gap-2">
-                <dt className="text-stone-500 font-medium">Loyalty points</dt>
-                <dd className="text-stone-900 tabular-nums">{viewUser.loyalty_points ?? 0}</dd>
+                <dt className="text-stone-500 font-medium">Breakfast cards</dt>
+                <dd className="text-stone-900 tabular-nums">{viewUser.loyalty_cards ?? 0}</dd>
               </div>
             </dl>
             <button

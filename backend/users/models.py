@@ -27,4 +27,7 @@ class User(AbstractUser):
         blank=True,
         default="",
     )
-    loyalty_points = models.PositiveIntegerField(default=0)
+    loyalty_cards = models.PositiveIntegerField(
+        default=0,
+        help_text="Breakfast loyalty cards available (earned 1 per 5 completed stays, minus redemptions).",
+    )
