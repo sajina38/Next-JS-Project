@@ -54,6 +54,12 @@ export default function Footer() {
               >
                 Contacts
               </Link>
+              <Link
+                href="/terms-of-service"
+                className="text-gray-300 hover:text-white transition-colors"
+              >
+                Terms of Service
+              </Link>
             </div>
           </div>
 

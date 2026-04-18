@@ -50,12 +50,6 @@ const HERO_CONFIG: Record<
     description:
       "We'd love to hear from you. Reach out for reservations, inquiries, or to plan your perfect stay.",
   },
-  "/privacy-policy": {
-    image: "/meetingRoom.png",
-    title: "Privacy Policy",
-    description:
-      "How we collect, use, and protect your information when you use our website and services.",
-  },
   "/terms-of-service": {
     image: "/meetingRoom.png",
     title: "Terms of Service",

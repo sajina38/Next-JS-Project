@@ -237,7 +237,7 @@ export default function LoginPage() {
             <Link href="#" className="hover:text-gray-700">
               Privacy Policy
             </Link>
-            <Link href="#" className="hover:text-gray-700">
+            <Link href="/terms-of-service" className="hover:text-gray-700">
               Terms of Service
             </Link>
             <Link href="#" className="hover:text-gray-700">
