@@ -30,7 +30,7 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!formData.agreeTerms) {
-      setError("Please agree to the Terms of Service");
+      setError("Please agree to the Terms of Service and Privacy Policy");
       return;
     }
     setError("");
@@ -203,6 +203,10 @@ export default function RegisterPage() {
                 I agree to the{" "}
                 <Link href="/terms-of-service" className="text-emerald-700 hover:underline">
                   Terms of Service
+                </Link>{" "}
+                and{" "}
+                <Link href="/privacy-policy" className="text-emerald-700 hover:underline">
+                  Privacy Policy
                 </Link>
               </span>
             </label>

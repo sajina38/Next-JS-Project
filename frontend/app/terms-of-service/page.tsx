@@ -84,9 +84,15 @@ export default function TermsOfServicePage() {
 
       <LegalSection title="Personal information">
         <p>
-          Questions about how we handle personal data may be directed to us
-          using the contact details below. Additional privacy disclosures may be
-          published on this website from time to time.
+          How we collect, use, and share personal data is described in our{" "}
+          <Link
+            href="/privacy-policy"
+            className="text-emerald-700 font-medium hover:underline"
+          >
+            Privacy Policy
+          </Link>
+          . You may also contact us using the details in the Contact section
+          below.
         </p>
       </LegalSection>
 

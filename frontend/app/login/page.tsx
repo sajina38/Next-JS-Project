@@ -234,7 +234,7 @@ export default function LoginPage() {
           </p>
 
           <div className="mt-12 flex justify-end gap-4 text-sm text-gray-500">
-            <Link href="#" className="hover:text-gray-700">
+            <Link href="/privacy-policy" className="hover:text-gray-700">
               Privacy Policy
             </Link>
             <Link href="/terms-of-service" className="hover:text-gray-700">

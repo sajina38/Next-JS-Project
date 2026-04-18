@@ -55,6 +55,12 @@ export default function Footer() {
                 Contacts
               </Link>
               <Link
+                href="/privacy-policy"
+                className="text-gray-300 hover:text-white transition-colors"
+              >
+                Privacy Policy
+              </Link>
+              <Link
                 href="/terms-of-service"
                 className="text-gray-300 hover:text-white transition-colors"
               >
