@@ -73,16 +73,8 @@ function formatApiError(err: unknown, fallback: string): string {
 function GuestTableCell({ b }: { b: BookingPaymentRow }) {
   const guest = (b.guest_name || "").trim();
   const account = b.username;
-  if (!guest) {
-    return <p className="font-medium text-stone-900">{account}</p>;
-  }
-  const sameAsAccount = guest.toLowerCase() === account.toLowerCase();
-  return (
-    <>
-      <p className="font-medium text-stone-900">{guest}</p>
-      {!sameAsAccount && <p className="text-xs text-stone-500">Account: {account}</p>}
-    </>
-  );
+  const label = guest || account;
+  return <p className="font-medium text-stone-900">{label}</p>;
 }
 
 function formatAmountDisplay(raw: string): string {

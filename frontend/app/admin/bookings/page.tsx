@@ -57,10 +57,16 @@ interface CustomerOption {
 
 const PAYMENT_METHOD_OPTIONS = [
   { value: "pay-at-checkin", label: "Pay at check-in" },
-  { value: "prepay", label: "Pre-payment (bank transfer)" },
-  { value: "bank-card", label: "Bank card on arrival" },
   { value: "khalti", label: "Online payment (Khalti)" },
 ] as const;
+
+/** Labels for any stored payment_method (includes legacy options no longer offered when creating bookings). */
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  "pay-at-checkin": "Pay at check-in",
+  prepay: "Pre-payment (bank transfer)",
+  "bank-card": "Bank card on arrival",
+  khalti: "Online payment (Khalti)",
+};
 
 const emptyAddForm = {
   user: "",
@@ -95,8 +101,7 @@ const STATUS_OPTIONS: BookingStatus[] = ["pending", "confirmed", "cancelled", "c
 
 function paymentMethodLabel(value: string | undefined): string {
   if (!value) return "—";
-  const hit = PAYMENT_METHOD_OPTIONS.find((p) => p.value === value);
-  return hit?.label || value;
+  return PAYMENT_METHOD_LABELS[value] || value;
 }
 
 function bookingStatusLabel(value: string): string {
@@ -112,16 +117,8 @@ function bookingStatusLabel(value: string): string {
 function GuestTableCell({ b }: { b: BookingRow }) {
   const guest = (b.guest_name || "").trim();
   const account = b.username;
-  if (!guest) {
-    return <p className="font-medium text-stone-900">{account}</p>;
-  }
-  const sameAsAccount = guest.toLowerCase() === account.toLowerCase();
-  return (
-    <>
-      <p className="font-medium text-stone-900">{guest}</p>
-      {!sameAsAccount && <p className="text-xs text-stone-500">Account: {account}</p>}
-    </>
-  );
+  const label = guest || account;
+  return <p className="font-medium text-stone-900">{label}</p>;
 }
 
 function BookingRowActions({
@@ -451,9 +448,7 @@ export default function AdminBookingsPage() {
 
   function customerLabel(c: CustomerOption) {
     const name = [c.first_name, c.last_name].filter(Boolean).join(" ").trim();
-    const cards = c.loyalty_cards ?? 0;
-    const base = name ? `${c.username} (${name})` : c.username;
-    return `${base} · ${cards} breakfast card${cards === 1 ? "" : "s"}`;
+    return name ? `${c.username} (${name})` : c.username;
   }
 
   const selectedCustomer = useMemo(
