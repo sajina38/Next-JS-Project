@@ -34,7 +34,14 @@ export type DashboardChartsInput = {
 
 function donutOptions(labels: string[], colors: string[], totalLabel: string): ApexOptions {
   return {
-    chart: { type: "donut", toolbar: { show: false }, fontFamily: "inherit" },
+    chart: {
+      type: "donut",
+      toolbar: {
+        show: true,
+        tools: { download: true, selection: false, zoom: false, zoomin: false, zoomout: false, pan: false, reset: false },
+      },
+      fontFamily: "inherit",
+    },
     labels,
     colors,
     legend: { position: "bottom", fontSize: "11px", labels: { colors: STONE } },

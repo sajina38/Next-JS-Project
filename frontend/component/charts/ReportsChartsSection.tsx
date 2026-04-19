@@ -37,7 +37,14 @@ export function ReportsChartsSection({
   const statusSeries = bookingsByStatus.map((r) => r.count);
   const donutStatusOptions = useMemo<ApexOptions>(
     () => ({
-      chart: { type: "donut", toolbar: { show: false }, fontFamily: "inherit" },
+      chart: {
+        type: "donut",
+        toolbar: {
+          show: true,
+          tools: { download: true, selection: false, zoom: false, zoomin: false, zoomout: false, pan: false, reset: false },
+        },
+        fontFamily: "inherit",
+      },
       labels: bookingsByStatus.map((r) => humanize(r.status)),
       colors: ["#d97706", "#059669", "#64748b", "#7c3aed"],
       legend: { position: "bottom", fontSize: "12px", labels: { colors: STONE } },
@@ -66,7 +73,14 @@ export function ReportsChartsSection({
   const paySeries = bookingsByPayment.map((r) => r.count);
   const donutPayOptions = useMemo<ApexOptions>(
     () => ({
-      chart: { type: "donut", toolbar: { show: false }, fontFamily: "inherit" },
+      chart: {
+        type: "donut",
+        toolbar: {
+          show: true,
+          tools: { download: true, selection: false, zoom: false, zoomin: false, zoomout: false, pan: false, reset: false },
+        },
+        fontFamily: "inherit",
+      },
       labels: bookingsByPayment.map((r) => humanize(r.payment_status)),
       colors: ["#059669", "#94a3b8"],
       legend: { position: "bottom", fontSize: "12px", labels: { colors: STONE } },
@@ -94,7 +108,14 @@ export function ReportsChartsSection({
 
   const comboOptions = useMemo<ApexOptions>(
     () => ({
-      chart: { type: "line", toolbar: { show: false }, fontFamily: "inherit" },
+      chart: {
+        type: "line",
+        toolbar: {
+          show: true,
+          tools: { download: true, selection: false, zoom: false, zoomin: false, zoomout: false, pan: false, reset: false },
+        },
+        fontFamily: "inherit",
+      },
       stroke: { width: [0, 3], curve: "smooth" },
       plotOptions: { bar: { borderRadius: 4, columnWidth: "50%" } },
       dataLabels: { enabled: false },
