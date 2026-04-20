@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import api from "@/lib/api";
-import { useAuth } from "@/lib/auth";
 
 interface AdminUser {
   id: number;
@@ -22,7 +21,6 @@ const ROLE_BADGE: Record<string, string> = {
 };
 
 export default function AdminUsersPage() {
-  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -46,7 +44,6 @@ export default function AdminUsersPage() {
     first_name: "",
     last_name: "",
     role: "customer",
-    is_active: true,
   });
   const [editSaving, setEditSaving] = useState(false);
 
@@ -122,7 +119,6 @@ export default function AdminUsersPage() {
       first_name: u.first_name || "",
       last_name: u.last_name || "",
       role: u.role,
-      is_active: u.is_active,
     });
   }
 
@@ -137,7 +133,7 @@ export default function AdminUsersPage() {
         first_name: editForm.first_name.trim(),
         last_name: editForm.last_name.trim(),
         role: editForm.role,
-        is_active: editForm.is_active,
+        is_active: editUser.is_active,
       };
       const pwd = editForm.password.trim();
       if (pwd.length > 0) {
@@ -359,19 +355,6 @@ export default function AdminUsersPage() {
                 <option value="manager">Manager</option>
                 <option value="admin">Admin</option>
               </select>
-              <label className="flex items-center gap-2 text-sm text-stone-700 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={editForm.is_active}
-                  disabled={currentUser?.id === editUser.id}
-                  onChange={(e) => setEditForm({ ...editForm, is_active: e.target.checked })}
-                  className="rounded border-stone-300 text-emerald-700 focus:ring-emerald-600"
-                />
-                Active account
-                {currentUser?.id === editUser.id ? (
-                  <span className="text-stone-400 font-normal">(cannot deactivate yourself)</span>
-                ) : null}
-              </label>
               <div className="flex gap-2 pt-2">
                 <button
                   type="button"

@@ -465,6 +465,98 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
 
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+  const [passwordModalMode, setPasswordModalMode] = useState<"change" | "email">("change");
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetError, setResetError] = useState("");
+  const [resetSent, setResetSent] = useState(false);
+  const [resetWarning, setResetWarning] = useState("");
+  const [oldPassword, setOldPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newPassword2, setNewPassword2] = useState("");
+  const [changeLoading, setChangeLoading] = useState(false);
+  const [changeError, setChangeError] = useState("");
+
+  function openPasswordModal() {
+    setPasswordModalOpen(true);
+    setPasswordModalMode("change");
+    setResetEmail(profile?.email?.trim() || "");
+    setResetSent(false);
+    setResetError("");
+    setResetWarning("");
+    setOldPassword("");
+    setNewPassword("");
+    setNewPassword2("");
+    setChangeError("");
+  }
+
+  function closePasswordModal() {
+    setPasswordModalOpen(false);
+    setResetSent(false);
+    setResetError("");
+    setResetWarning("");
+    setChangeError("");
+  }
+
+  async function submitPasswordResetEmail(e: React.FormEvent) {
+    e.preventDefault();
+    setResetError("");
+    setResetWarning("");
+    setResetLoading(true);
+    try {
+      const { data } = await api.post<{ detail?: string; warning?: string }>("/auth/password-reset/", {
+        email: resetEmail.trim(),
+      });
+      setResetSent(true);
+      if (data?.warning) setResetWarning(data.warning);
+    } catch {
+      setResetError("Something went wrong. Please try again in a moment.");
+    } finally {
+      setResetLoading(false);
+    }
+  }
+
+  async function submitChangePassword(e: React.FormEvent) {
+    e.preventDefault();
+    setChangeError("");
+    if (newPassword !== newPassword2) {
+      setChangeError("New passwords do not match.");
+      return;
+    }
+    if (newPassword.length < 6) {
+      setChangeError("New password must be at least 6 characters.");
+      return;
+    }
+    setChangeLoading(true);
+    try {
+      await api.post("/auth/change-password/", {
+        old_password: oldPassword,
+        new_password: newPassword,
+        new_password_confirm: newPassword2,
+      });
+      closePasswordModal();
+      await logout();
+      router.push("/login");
+    } catch (err: unknown) {
+      const ax = err as { response?: { data?: Record<string, string[] | string> } };
+      const d = ax.response?.data;
+      if (d && typeof d === "object") {
+        if (typeof d.detail === "string") {
+          setChangeError(d.detail);
+          return;
+        }
+        if (Array.isArray(d.new_password)) {
+          setChangeError(d.new_password.join(" "));
+          return;
+        }
+      }
+      setChangeError("Could not update password. Check your current password and try again.");
+    } finally {
+      setChangeLoading(false);
+    }
+  }
+
   useEffect(() => {
     if (!authLoading && !user) router.push("/login");
   }, [authLoading, user, router]);
@@ -1071,16 +1163,13 @@ export default function ProfilePage() {
                   </div>
                   <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Password</h2>
                   <p className="text-lg font-medium tracking-[0.25em] text-gray-800 mb-5">••••••••</p>
-                  <Link
-                    href={
-                      p?.email
-                        ? `/login/forgot-password?email=${encodeURIComponent(p.email)}`
-                        : "/login/forgot-password"
-                    }
+                  <button
+                    type="button"
+                    onClick={openPasswordModal}
                     className="mt-auto inline-flex justify-center items-center px-4 py-2.5 text-sm font-medium text-emerald-800 bg-emerald-100/80 hover:bg-emerald-100 rounded-lg transition-colors w-full sm:w-fit"
                   >
                     Reset password
-                  </Link>
+                  </button>
                 </div>
 
                 <div className="rounded-2xl border border-stone-200 bg-white shadow-sm p-6 sm:p-7 flex flex-col">
@@ -1119,6 +1208,186 @@ export default function ProfilePage() {
         </div>
       </main>
       </div>
+
+      {passwordModalOpen && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="password-modal-title"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !changeLoading && !resetLoading) closePasswordModal();
+          }}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 sm:p-8 border border-stone-200 relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={closePasswordModal}
+              className="absolute top-4 right-4 p-2 rounded-lg text-stone-500 hover:bg-stone-100 hover:text-stone-800"
+              aria-label="Close"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <h2 id="password-modal-title" className="text-xl font-bold text-gray-900 pr-10 mb-1">
+              Reset password
+            </h2>
+            <p className="text-sm text-gray-600 mb-5">
+              Update your password here, or get a reset link by email if you forgot it.
+            </p>
+
+            <div className="flex rounded-lg border border-stone-200 p-0.5 mb-5 bg-stone-50">
+              <button
+                type="button"
+                onClick={() => {
+                  setPasswordModalMode("change");
+                  setChangeError("");
+                  setResetError("");
+                }}
+                className={`flex-1 py-2 text-sm font-semibold rounded-md transition-colors ${
+                  passwordModalMode === "change"
+                    ? "bg-white text-emerald-800 shadow-sm"
+                    : "text-stone-600 hover:text-stone-900"
+                }`}
+              >
+                New password
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPasswordModalMode("email");
+                  setChangeError("");
+                  setResetError("");
+                  setResetSent(false);
+                  setResetWarning("");
+                }}
+                className={`flex-1 py-2 text-sm font-semibold rounded-md transition-colors ${
+                  passwordModalMode === "email"
+                    ? "bg-white text-emerald-800 shadow-sm"
+                    : "text-stone-600 hover:text-stone-900"
+                }`}
+              >
+                Email link
+              </button>
+            </div>
+
+            {passwordModalMode === "change" ? (
+              <form onSubmit={submitChangePassword} className="space-y-4">
+                {changeError && (
+                  <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                    {changeError}
+                  </div>
+                )}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">
+                    Current password
+                  </label>
+                  <input
+                    type="password"
+                    value={oldPassword}
+                    onChange={(e) => setOldPassword(e.target.value)}
+                    required
+                    autoComplete="current-password"
+                    className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">
+                    New password
+                  </label>
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    required
+                    minLength={6}
+                    autoComplete="new-password"
+                    className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">
+                    Confirm new password
+                  </label>
+                  <input
+                    type="password"
+                    value={newPassword2}
+                    onChange={(e) => setNewPassword2(e.target.value)}
+                    required
+                    minLength={6}
+                    autoComplete="new-password"
+                    className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={changeLoading}
+                  className="w-full py-3 rounded-lg bg-emerald-700 text-white text-sm font-semibold hover:bg-emerald-800 disabled:opacity-50"
+                >
+                  {changeLoading ? "Updating…" : "Update password"}
+                </button>
+                <p className="text-xs text-gray-500 text-center">
+                  After a successful change you will be signed out and can log in with your new password.
+                </p>
+              </form>
+            ) : resetSent ? (
+              <div className="space-y-4">
+                <div className="text-sm text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-3">
+                  If an account exists for that address, reset instructions were sent. Use the link in the email to
+                  choose a new password, then sign in again.
+                </div>
+                {resetWarning ? (
+                  <div className="text-sm text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-3">
+                    {resetWarning}
+                  </div>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={closePasswordModal}
+                  className="w-full py-3 rounded-lg border border-stone-200 text-sm font-semibold text-stone-800 hover:bg-stone-50"
+                >
+                  Close
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={submitPasswordResetEmail} className="space-y-4">
+                {resetError && (
+                  <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                    {resetError}
+                  </div>
+                )}
+                <p className="text-xs text-gray-500 -mt-1">
+                  Use the same email as on your account. We will send a secure link to set a new password.
+                </p>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    required
+                    autoComplete="email"
+                    className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={resetLoading}
+                  className="w-full py-3 rounded-lg bg-emerald-700 text-white text-sm font-semibold hover:bg-emerald-800 disabled:opacity-50"
+                >
+                  {resetLoading ? "Sending…" : "Send reset link"}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

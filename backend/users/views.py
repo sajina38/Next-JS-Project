@@ -17,6 +17,7 @@ from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from .serializers import (
     AdminCreateUserSerializer,
     AdminUpdateUserSerializer,
+    ChangePasswordSerializer,
     PasswordResetConfirmSerializer,
     PasswordResetRequestSerializer,
     UserProfileSerializer,
@@ -194,6 +195,35 @@ class PasswordResetConfirmView(APIView):
         user.save(update_fields=["password"])
         return Response(
             {"detail": "Your password has been updated. You can sign in now."},
+            status=status.HTTP_200_OK,
+        )
+
+
+class ChangePasswordView(APIView):
+    """Authenticated user sets a new password after verifying the current one."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = ChangePasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = request.user
+        old = serializer.validated_data["old_password"]
+        if not user.check_password(old):
+            return Response(
+                {"detail": "Current password is incorrect."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        new_password = serializer.validated_data["new_password"]
+        try:
+            validate_password(new_password, user=user)
+        except DjangoValidationError as e:
+            return Response({"new_password": list(e.messages)}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.set_password(new_password)
+        user.save(update_fields=["password"])
+        return Response(
+            {"detail": "Your password has been updated. Please sign in again with your new password."},
             status=status.HTTP_200_OK,
         )
 

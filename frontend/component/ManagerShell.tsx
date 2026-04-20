@@ -13,6 +13,12 @@ const NAV = [
   { href: "/manager/bookings", label: "Bookings", icon: "calendar" },
   { href: "/manager/payments", label: "Payments", icon: "billing" },
   { href: "/manager/settings", label: "Settings", icon: "settings" },
+  {
+    href: "/",
+    label: "View site",
+    icon: "globe",
+    newTab: true,
+  },
 ] as const;
 
 function NavIcon({ name }: { name: (typeof NAV)[number]["icon"] }) {
@@ -102,6 +108,16 @@ function NavIcon({ name }: { name: (typeof NAV)[number]["icon"] }) {
         />
       </svg>
     );
+  if (name === "globe")
+    return (
+      <svg className={cls} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0 1 12 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 0 1 3 12c0-1.605.42-3.113 1.157-4.418"
+        />
+      </svg>
+    );
   return (
     <svg
       className={cls}
@@ -177,23 +193,35 @@ export default function ManagerShell({
           </Link>
         </div>
 
-        <nav className="flex-1 p-3 space-y-0.5">
+        <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
           {NAV.map((item) => {
+            const opensNewTab = "newTab" in item && item.newTab;
             const active =
-              pathname === item.href || pathname?.startsWith(item.href + "/");
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                  active
-                    ? "bg-emerald-50 text-emerald-800"
-                    : "text-stone-600 hover:bg-stone-50 hover:text-stone-900"
-                }`}
-              >
-                <span
-                  className={active ? "text-emerald-700" : "text-stone-400"}
+              !opensNewTab && (pathname === item.href || pathname?.startsWith(item.href + "/"));
+            const rowClass = `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              active ? "bg-emerald-50 text-emerald-800" : "text-stone-600 hover:bg-stone-50 hover:text-stone-900"
+            }`;
+            const iconClass = active ? "text-emerald-700" : "text-stone-400";
+            if (opensNewTab) {
+              return (
+                <a
+                  key="nav-customer-facing"
+                  href={item.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={rowClass}
+                  title="Opens in a new browser tab for reference only"
                 >
+                  <span className={iconClass}>
+                    <NavIcon name={item.icon} />
+                  </span>
+                  {item.label}
+                </a>
+              );
+            }
+            return (
+              <Link key={item.href} href={item.href} className={rowClass}>
+                <span className={iconClass}>
                   <NavIcon name={item.icon} />
                 </span>
                 {item.label}
