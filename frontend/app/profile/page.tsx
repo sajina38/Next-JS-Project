@@ -477,6 +477,9 @@ export default function ProfilePage() {
   const [newPassword2, setNewPassword2] = useState("");
   const [changeLoading, setChangeLoading] = useState(false);
   const [changeError, setChangeError] = useState("");
+  const [showPwdOld, setShowPwdOld] = useState(false);
+  const [showPwdNew, setShowPwdNew] = useState(false);
+  const [showPwdNew2, setShowPwdNew2] = useState(false);
 
   function openPasswordModal() {
     setPasswordModalOpen(true);
@@ -489,6 +492,9 @@ export default function ProfilePage() {
     setNewPassword("");
     setNewPassword2("");
     setChangeError("");
+    setShowPwdOld(false);
+    setShowPwdNew(false);
+    setShowPwdNew2(false);
   }
 
   function closePasswordModal() {
@@ -497,6 +503,9 @@ export default function ProfilePage() {
     setResetError("");
     setResetWarning("");
     setChangeError("");
+    setShowPwdOld(false);
+    setShowPwdNew(false);
+    setShowPwdNew2(false);
   }
 
   async function submitPasswordResetEmail(e: React.FormEvent) {
@@ -1247,6 +1256,9 @@ export default function ProfilePage() {
                   setPasswordModalMode("change");
                   setChangeError("");
                   setResetError("");
+                  setShowPwdOld(false);
+                  setShowPwdNew(false);
+                  setShowPwdNew2(false);
                 }}
                 className={`flex-1 py-2 text-sm font-semibold rounded-md transition-colors ${
                   passwordModalMode === "change"
@@ -1264,6 +1276,9 @@ export default function ProfilePage() {
                   setResetError("");
                   setResetSent(false);
                   setResetWarning("");
+                  setShowPwdOld(false);
+                  setShowPwdNew(false);
+                  setShowPwdNew2(false);
                 }}
                 className={`flex-1 py-2 text-sm font-semibold rounded-md transition-colors ${
                   passwordModalMode === "email"
@@ -1286,42 +1301,111 @@ export default function ProfilePage() {
                   <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">
                     Current password
                   </label>
-                  <input
-                    type="password"
-                    value={oldPassword}
-                    onChange={(e) => setOldPassword(e.target.value)}
-                    required
-                    autoComplete="current-password"
-                    className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showPwdOld ? "text" : "password"}
+                      value={oldPassword}
+                      onChange={(e) => setOldPassword(e.target.value)}
+                      required
+                      autoComplete="current-password"
+                      className="w-full pl-3 pr-11 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPwdOld((v) => !v)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md text-stone-400 hover:text-stone-700 hover:bg-stone-100"
+                      aria-label={showPwdOld ? "Hide current password" : "Show current password"}
+                    >
+                      {showPwdOld ? (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 0 1-4.293 5.774M6.228 6.228 3 3m13.772 13.772 3 3M9.88 9.88l-3-3m7.532 7.532 3 3M3 3l18 18"
+                          />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">
                     New password
                   </label>
-                  <input
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    required
-                    minLength={6}
-                    autoComplete="new-password"
-                    className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showPwdNew ? "text" : "password"}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      required
+                      minLength={6}
+                      autoComplete="new-password"
+                      className="w-full pl-3 pr-11 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPwdNew((v) => !v)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md text-stone-400 hover:text-stone-700 hover:bg-stone-100"
+                      aria-label={showPwdNew ? "Hide new password" : "Show new password"}
+                    >
+                      {showPwdNew ? (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 0 1-4.293 5.774M6.228 6.228 3 3m13.772 13.772 3 3M9.88 9.88l-3-3m7.532 7.532 3 3M3 3l18 18"
+                          />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">
                     Confirm new password
                   </label>
-                  <input
-                    type="password"
-                    value={newPassword2}
-                    onChange={(e) => setNewPassword2(e.target.value)}
-                    required
-                    minLength={6}
-                    autoComplete="new-password"
-                    className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showPwdNew2 ? "text" : "password"}
+                      value={newPassword2}
+                      onChange={(e) => setNewPassword2(e.target.value)}
+                      required
+                      minLength={6}
+                      autoComplete="new-password"
+                      className="w-full pl-3 pr-11 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600/30 focus:border-emerald-600"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPwdNew2((v) => !v)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md text-stone-400 hover:text-stone-700 hover:bg-stone-100"
+                      aria-label={showPwdNew2 ? "Hide confirm password" : "Show confirm password"}
+                    >
+                      {showPwdNew2 ? (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 0 1-4.293 5.774M6.228 6.228 3 3m13.772 13.772 3 3M9.88 9.88l-3-3m7.532 7.532 3 3M3 3l18 18"
+                          />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                 </div>
                 <button
                   type="submit"
