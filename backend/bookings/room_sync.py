@@ -158,15 +158,51 @@ def recompute_room_status(room):
     room.save(update_fields=["room_status"])
 
 
+def auto_checkout_past_confirmed_bookings() -> int:
+    """
+    Move CONFIRMED stays whose check-out date is strictly before today to CHECKOUT.
+
+    Room blocking already ignores these (``check_out__gt=today``), but the booking
+    row would otherwise stay ``confirmed`` forever on dashboards. Idempotent.
+    Payment fields are unchanged (e.g. still Unpaid until staff records payment).
+    """
+    from .loyalty import sync_user_loyalty_cards
+    from .models import Booking
+
+    today = timezone.localdate()
+    stale = (
+        Booking.objects.filter(
+            status=Booking.Status.CONFIRMED,
+            check_out__lt=today,
+        )
+        .select_related("room")
+        .iterator()
+    )
+    user_ids = set()
+    n = 0
+    for booking in stale:
+        booking.status = Booking.Status.CHECKOUT
+        booking.save(update_fields=["status"])
+        sync_room_status_after_booking_save(booking)
+        user_ids.add(booking.user_id)
+        n += 1
+    for uid in user_ids:
+        sync_user_loyalty_cards(uid)
+    return n
+
+
 def refresh_bookings_past_checkout():
     """
     Keep ``available`` / ``occupied`` in sync with *hard* blocking bookings.
+
+    Also completes stale ``confirmed`` bookings (see ``auto_checkout_past_confirmed_bookings``).
 
     - Downgrades ``occupied`` → ``available`` when nothing blocks.
     - Upgrades ``available`` → ``occupied`` when a hard block exists (fixes admin
       marking a room available while a paid/committed booking still overlaps).
     Skips ``cleaning`` and ``maintenance``.
     """
+    auto_checkout_past_confirmed_bookings()
     changed = 0
     for room in Room.objects.exclude(
         room_status__in=(Room.RoomStatus.MAINTENANCE, Room.RoomStatus.CLEANING)
