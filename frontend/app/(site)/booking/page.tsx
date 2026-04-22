@@ -10,8 +10,13 @@ export default function Booking() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!authLoading && !user) {
+    if (authLoading) return;
+    if (!user) {
       router.push("/login");
+      return;
+    }
+    if (user.role === "admin" || user.role === "manager") {
+      router.replace(user.role === "admin" ? "/admin/dashboard" : "/manager/dashboard");
     }
   }, [authLoading, user, router]);
 
@@ -58,6 +63,14 @@ export default function Booking() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="text-gray-500">Loading...</p>
+      </div>
+    );
+  }
+
+  if (user.role === "admin" || user.role === "manager") {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-500">Redirecting…</p>
       </div>
     );
   }

@@ -49,7 +49,7 @@ export default function LoyaltyPage() {
   const authReady = mounted && !authLoading;
 
   return (
-    <div className="min-h-screen bg-[var(--bg)] pb-20">
+    <div className="bg-[var(--bg)] pb-12 md:pb-16">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10 md:py-14">
         <p className="text-xs font-semibold uppercase tracking-widest text-emerald-700 mb-2">Urban Rewards</p>
         <h1 className="text-3xl md:text-4xl font-bold text-gray-900 tracking-tight mb-4">Loyalty program</h1>

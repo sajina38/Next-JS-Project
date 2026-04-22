@@ -571,7 +571,18 @@ export default function ProfilePage() {
   }, [authLoading, user, router]);
 
   useEffect(() => {
-    if (!user) return;
+    if (authLoading || !user) return;
+    if (user.role === "admin") {
+      router.replace("/admin/dashboard");
+      return;
+    }
+    if (user.role === "manager") {
+      router.replace("/manager/dashboard");
+    }
+  }, [authLoading, user, router]);
+
+  useEffect(() => {
+    if (!user || user.role !== "customer") return;
     api
       .get("/auth/profile/")
       .then((res) => {
@@ -590,7 +601,7 @@ export default function ProfilePage() {
   }, [user]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || user.role !== "customer") return;
     api
       .get("/bookings/my-bookings/")
       .then((res) => setBookings(res.data))
@@ -662,6 +673,14 @@ export default function ProfilePage() {
   }
 
   if (authLoading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="w-10 h-10 border-4 border-gray-200 border-t-emerald-700 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (user.role === "admin" || user.role === "manager") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="w-10 h-10 border-4 border-gray-200 border-t-emerald-700 rounded-full animate-spin" />

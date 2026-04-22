@@ -2,15 +2,27 @@
 
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import api from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 
 function KhaltiReturnContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [message, setMessage] = useState("Confirming your payment…");
   const [ok, setOk] = useState<boolean | null>(null);
 
   useEffect(() => {
+    if (authLoading) return;
+    if (user?.role === "admin" || user?.role === "manager") {
+      router.replace(user.role === "admin" ? "/admin/dashboard" : "/manager/dashboard");
+    }
+  }, [authLoading, user, router]);
+
+  useEffect(() => {
+    if (authLoading || user?.role === "admin" || user?.role === "manager") return;
+
     const bookingId = searchParams.get("booking_id");
     const pidx =
       searchParams.get("pidx") ||
@@ -51,7 +63,7 @@ function KhaltiReturnContent() {
     return () => {
       cancelled = true;
     };
-  }, [searchParams]);
+  }, [searchParams, authLoading, user]);
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 bg-[var(--bg)]">

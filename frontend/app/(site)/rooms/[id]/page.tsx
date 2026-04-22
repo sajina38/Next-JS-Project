@@ -135,6 +135,8 @@ export default function RoomDetailPage() {
   const roomId = Number(params.id);
   const { user } = useAuth();
   const router = useRouter();
+  const isStaffUser = Boolean(user && (user.role === "admin" || user.role === "manager"));
+  const staffBookingsHref = user?.role === "admin" ? "/admin/bookings" : "/manager/bookings";
 
   const [room, setRoom] = useState<RoomData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -195,6 +197,7 @@ export default function RoomDetailPage() {
   }, [loadRoom]);
 
   const handleBooking = () => {
+    if (isStaffUser) return;
     if (!user) {
       setShowAuthModal(true);
       return;
@@ -387,66 +390,84 @@ export default function RoomDetailPage() {
               </div>
 
               <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                    Check-in
-                  </label>
-                  <input
-                    type="date"
-                    min={todayMin}
-                    value={form.check_in}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setForm((p) => {
-                        let check_out = p.check_out;
-                        if (check_out && v && check_out <= v) check_out = "";
-                        return { ...p, check_in: v, check_out };
-                      });
-                    }}
-                    className="w-full p-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-shadow"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                    Check-out
-                  </label>
-                  <input
-                    type="date"
-                    min={checkoutMin}
-                    value={form.check_out}
-                    onChange={(e) => setForm((p) => ({ ...p, check_out: e.target.value }))}
-                    className="w-full p-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-shadow"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
-                    Guests
-                  </label>
-                  <select
-                    value={form.guests}
-                    onChange={(e) => setForm((p) => ({ ...p, guests: Number(e.target.value) }))}
-                    className="w-full p-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-shadow"
-                  >
-                    {Array.from({ length: room.capacity }, (_, i) => i + 1).map((n) => (
-                      <option key={n} value={n}>
-                        {n} {n === 1 ? "Guest" : "Guests"}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                {isStaffUser ? (
+                  <div className="rounded-xl border border-amber-100 bg-amber-50/95 px-4 py-4 text-sm text-amber-950">
+                    <p className="font-semibold text-amber-900">Staff account</p>
+                    <p className="mt-2 leading-relaxed text-amber-900/90">
+                      The public guest booking flow is for customers only. Create or manage reservations from your
+                      dashboard.
+                    </p>
+                    <Link
+                      href={staffBookingsHref}
+                      className="mt-4 flex w-full justify-center rounded-full bg-emerald-700 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-800"
+                    >
+                      Go to Bookings
+                    </Link>
+                  </div>
+                ) : (
+                  <>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                        Check-in
+                      </label>
+                      <input
+                        type="date"
+                        min={todayMin}
+                        value={form.check_in}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setForm((p) => {
+                            let check_out = p.check_out;
+                            if (check_out && v && check_out <= v) check_out = "";
+                            return { ...p, check_in: v, check_out };
+                          });
+                        }}
+                        className="w-full p-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-shadow"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                        Check-out
+                      </label>
+                      <input
+                        type="date"
+                        min={checkoutMin}
+                        value={form.check_out}
+                        onChange={(e) => setForm((p) => ({ ...p, check_out: e.target.value }))}
+                        className="w-full p-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-shadow"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                        Guests
+                      </label>
+                      <select
+                        value={form.guests}
+                        onChange={(e) => setForm((p) => ({ ...p, guests: Number(e.target.value) }))}
+                        className="w-full p-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-transparent transition-shadow"
+                      >
+                        {Array.from({ length: room.capacity }, (_, i) => i + 1).map((n) => (
+                          <option key={n} value={n}>
+                            {n} {n === 1 ? "Guest" : "Guests"}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-                <button
-                  onClick={handleBooking}
-                  disabled={!bookable}
-                  className="w-full bg-emerald-700 text-white py-3.5 rounded-full font-medium hover:bg-emerald-800 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-                >
-                  {!bookable ? "Currently Unavailable" : "Book Now"}
-                </button>
+                    <button
+                      onClick={handleBooking}
+                      disabled={!bookable}
+                      className="w-full bg-emerald-700 text-white py-3.5 rounded-full font-medium hover:bg-emerald-800 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                    >
+                      {!bookable ? "Currently Unavailable" : "Book Now"}
+                    </button>
 
-                {!user && (
-                  <p className="text-center text-xs text-gray-400">
-                    You&apos;ll need to log in to complete your booking
-                  </p>
+                    {!user && (
+                      <p className="text-center text-xs text-gray-400">
+                        You&apos;ll need to log in to complete your booking
+                      </p>
+                    )}
+                  </>
                 )}
               </div>
             </div>

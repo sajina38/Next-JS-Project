@@ -98,7 +98,7 @@ export default function Navbar() {
     ...BASE_MENU_ITEMS,
     ...(mounted && user
       ? [
-          { label: "My Profile", href: "/profile" },
+          ...(user.role === "customer" ? [{ label: "My Profile", href: "/profile" }] : []),
           ...(user.role === "manager"
             ? [{ label: "Manager Dashboard", href: "/manager/dashboard" }]
             : []),

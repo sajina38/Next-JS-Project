@@ -130,18 +130,21 @@ function ConfirmBookingContent() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && !user) {
+    if (authLoading) return;
+    if (!user) {
       router.push("/login");
       return;
     }
-    if (user) {
-      setFullName(user.username || "");
-      setEmail(user.email || "");
+    if (user.role === "admin" || user.role === "manager") {
+      router.replace(user.role === "admin" ? "/admin/dashboard" : "/manager/dashboard");
+      return;
     }
+    setFullName(user.username || "");
+    setEmail(user.email || "");
   }, [authLoading, user, router]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || user.role !== "customer") return;
     api
       .get<{ loyalty_cards?: number }>("/auth/profile/")
       .then((res) => setLoyaltyCards(res.data.loyalty_cards ?? 0))
@@ -299,6 +302,10 @@ function ConfirmBookingContent() {
   };
 
   if (!clientReady || authLoading || !user) {
+    return <FullPageSpinner />;
+  }
+
+  if (user.role === "admin" || user.role === "manager") {
     return <FullPageSpinner />;
   }
 

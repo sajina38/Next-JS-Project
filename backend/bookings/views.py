@@ -89,6 +89,16 @@ class BookingListCreateView(APIView):
         return Response(serializer.data)
 
     def post(self, request):
+        if request.user.role in ("admin", "manager"):
+            return Response(
+                {
+                    "error": (
+                        "Staff cannot use the guest booking flow. "
+                        "Use Bookings → Add booking in your dashboard."
+                    )
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
         serializer = BookingSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         booking = serializer.save(user=request.user)
@@ -183,8 +193,11 @@ class BookingDetailView(APIView):
         return Response(BookingSerializer(booking).data)
 
     def delete(self, request, pk):
-        if request.user.role != "admin":
-            return Response({"error": "Only admins can delete bookings."}, status=status.HTTP_403_FORBIDDEN)
+        if request.user.role not in ("admin", "manager"):
+            return Response(
+                {"error": "Only staff can delete bookings."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         booking = self._get_booking(pk, request.user)
         if not booking:
             return Response({"error": "Booking not found."}, status=status.HTTP_404_NOT_FOUND)
