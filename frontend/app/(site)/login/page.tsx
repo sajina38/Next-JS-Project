@@ -240,7 +240,7 @@ export default function LoginPage() {
             <Link href="/terms-of-service" className="hover:text-gray-700">
               Terms of Service
             </Link>
-            <Link href="#" className="hover:text-gray-700">
+            <Link href="/help-center" className="hover:text-gray-700">
               Help Center
             </Link>
           </div>

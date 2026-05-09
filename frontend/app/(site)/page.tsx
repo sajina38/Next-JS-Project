@@ -194,14 +194,10 @@ export default function Home() {
                 <p className="text-gray-600 mt-6 md:mt-10 mb-4">
                   Hotel Urban offers two distinct dining experiences, each
                   grounded in a shared philosophy of sustainability and
-                  exceptional flavor...
+                  exceptional flavor. From relaxed all-day dining to
+                  chef-curated evening menus, every dish is prepared with fresh
+                  local ingredients and warm, attentive service.
                 </p>
-                <a
-                  href="#"
-                  className="text-emerald-700 font-semibold hover:underline transition-colors"
-                >
-                  Dine with us
-                </a>
               </motion.div>
 
               <motion.div
@@ -243,15 +239,12 @@ export default function Home() {
                 <h2 className="text-2xl md:text-3xl font-bold">___________</h2>
 
                 <p className="text-gray-600 mt-6 md:mt-10 mb-4">
-                  At Hotel Urban, every moment is thoughtfully crafted to bring
-                  you closer to nature and yourself...
+                  At Hotel Urban, every meeting is thoughtfully designed to
+                  combine focus, comfort, and a calm atmosphere. Whether you
+                  are hosting a team session or a private business discussion,
+                  our flexible spaces and dedicated support help every gathering
+                  run smoothly.
                 </p>
-                <a
-                  href="#"
-                  className="text-emerald-700 font-semibold hover:underline transition-colors"
-                >
-                  Discover More
-                </a>
               </motion.div>
             </motion.div>
           </div>

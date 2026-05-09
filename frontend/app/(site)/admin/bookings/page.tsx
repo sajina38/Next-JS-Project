@@ -68,6 +68,14 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
   khalti: "Online payment (Khalti)",
 };
 
+const BACKEND_ORIGIN = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api").replace(/\/api\/?$/, "");
+
+function toBackendFileUrl(path?: string | null): string {
+  if (!path) return "";
+  if (/^https?:\/\//i.test(path)) return path;
+  return `${BACKEND_ORIGIN}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
 const emptyAddForm = {
   user: "",
   room: "",
@@ -982,7 +990,7 @@ export default function AdminBookingsPage() {
                       <dt className="text-stone-500 font-medium text-sm mb-2">ID document</dt>
                       <dd>
                         <a
-                          href={viewDetail.id_photo}
+                          href={toBackendFileUrl(viewDetail.id_photo)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-emerald-700 text-sm font-medium hover:underline"

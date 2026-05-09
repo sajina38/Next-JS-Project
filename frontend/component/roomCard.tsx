@@ -32,7 +32,7 @@ export default function RoomCard({
         </span>
       )}
 
-      <div className="md:w-[320px] md:min-w-[320px] h-56 md:h-auto relative overflow-hidden bg-gray-100">
+      <div className="md:w-[320px] md:min-w-[320px] h-56 md:h-56 relative overflow-hidden bg-gray-100">
         {image ? (
           <img
             src={image}

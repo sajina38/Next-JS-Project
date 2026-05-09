@@ -2,8 +2,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import { motion } from "motion/react";
+import api from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 
 export default function ContactForm() {
+  const { user } = useAuth();
+  const isStaffView = user?.role === "admin" || user?.role === "manager";
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -11,6 +15,7 @@ export default function ContactForm() {
     message: "",
   });
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -21,14 +26,24 @@ export default function ContactForm() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    await fetch("/api/contact", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(formData),
-    });
-    setFormData({ name: "", email: "", phone: "", message: "" });
-    setSubmitted(true);
-    setTimeout(() => setSubmitted(false), 4000);
+    if (isStaffView) {
+      setSubmitError("Staff accounts can only view this page. Contact form submission is disabled.");
+      return;
+    }
+    setSubmitError("");
+    try {
+      await api.post("/contact/", formData);
+      setFormData({ name: "", email: "", phone: "", message: "" });
+      setSubmitted(true);
+      setTimeout(() => setSubmitted(false), 4000);
+    } catch (err: unknown) {
+      const data = (err as { response?: { data?: Record<string, unknown> } })?.response?.data;
+      if (data && typeof data.error === "string") {
+        setSubmitError(data.error);
+      } else {
+        setSubmitError("Could not send your message right now. Please try again.");
+      }
+    }
   };
 
   return (
@@ -151,9 +166,20 @@ export default function ContactForm() {
               happy to help in any way we can.
             </h2>
 
+            {isStaffView && (
+              <div className="bg-amber-50 text-amber-800 text-sm p-4 rounded-lg mb-6">
+                Staff accounts can only view this public page. Form submission is disabled.
+              </div>
+            )}
+
             {submitted && (
               <div className="bg-emerald-50 text-emerald-700 text-sm p-4 rounded-lg mb-6">
                 Thank you! Your message has been sent successfully.
+              </div>
+            )}
+            {submitError && (
+              <div className="bg-red-50 text-red-700 text-sm p-4 rounded-lg mb-6">
+                {submitError}
               </div>
             )}
 
@@ -169,6 +195,7 @@ export default function ContactForm() {
                   onChange={handleChange}
                   placeholder="Please enter full name"
                   required
+                  disabled={isStaffView}
                   className="w-full px-0 py-3 bg-transparent border-b border-gray-300 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-emerald-700 transition-colors"
                 />
               </div>
@@ -184,6 +211,7 @@ export default function ContactForm() {
                   onChange={handleChange}
                   placeholder="Please enter email address"
                   required
+                  disabled={isStaffView}
                   className="w-full px-0 py-3 bg-transparent border-b border-gray-300 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-emerald-700 transition-colors"
                 />
               </div>
@@ -199,6 +227,7 @@ export default function ContactForm() {
                   onChange={handleChange}
                   placeholder="Please enter phone number"
                   required
+                  disabled={isStaffView}
                   className="w-full px-0 py-3 bg-transparent border-b border-gray-300 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-emerald-700 transition-colors"
                 />
               </div>
@@ -214,12 +243,14 @@ export default function ContactForm() {
                   placeholder="Please share any specific interests or messages here..."
                   required
                   rows={5}
+                  disabled={isStaffView}
                   className="w-full px-0 py-3 bg-transparent border-b border-gray-300 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-emerald-700 transition-colors resize-y"
                 />
               </div>
 
               <button
                 type="submit"
+                disabled={isStaffView}
                 className="inline-flex items-center gap-2 bg-emerald-700 text-white px-8 py-3 rounded-full text-sm font-semibold uppercase tracking-wider hover:bg-emerald-800 active:scale-[0.98] transition-all duration-300"
               >
                 Submit Form
